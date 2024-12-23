@@ -32,6 +32,19 @@ var xmlString2 =`
     </animal>
 </root>`
 
+var soapString = `
+<?xml version = "1.0"?>
+<SOAP-ENV:Envelope
+   xmlns:SOAP-ENV = "http://www.w3.org/2001/12/soap-envelope"
+   SOAP-ENV:encodingStyle = "http://www.w3.org/2001/12/soap-encoding">
+   <SOAP-ENV:Body xmlns:m = "http://www.xyz.org/quotations">
+      <m:GetQuotation>
+         <m:QuotationsName>MiscroSoft</m:QuotationsName>
+      </m:GetQuotation>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+`
+
 func TestParsing(t *testing.T) {
 	assert := assert.New(t)
 
@@ -55,6 +68,20 @@ func TestParsingFailure(t *testing.T) {
 	root, err := UnmarshalXML("bogus")
 	assert.Nil(root)
 	assert.NotNil(err)
+}
+
+func TestNamespaces(t *testing.T) {
+	assert := assert.New(t)
+
+	root, err := UnmarshalXML(soapString)
+	assert.Nil(err)
+
+	assert.Equal("Envelope", root.XMLName.Local)
+	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.XMLName.Space)
+	assert.Equal("Body", root.Children[0].XMLName.Local)
+	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.Children[0].XMLName.Space)
+	assert.Equal("GetQuotation", root.Children[0].Children[0].XMLName.Local)
+	assert.Equal("http://www.xyz.org/quotations", root.Children[0].Children[0].XMLName.Space)
 }
 
 func TestWalking(t *testing.T) {
