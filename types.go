@@ -72,7 +72,7 @@ func (node *Node) Stringify() string {
 			attStr += ", "
 		}
 	}
-	
+
 	ret := node.XMLName.Local + "[" + attStr + "]"
 
 	if len(node.Children) == 0 {

@@ -15,7 +15,7 @@ var xmlString1 = `
     <body>Don't forget me this weekend!</body>
 </note>`
 
-var xmlString2 =`
+var xmlString2 = `
 <root type="vet_hospital">
     <animal>
         <p>This is dog</p>
