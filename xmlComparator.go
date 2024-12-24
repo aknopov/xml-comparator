@@ -2,8 +2,23 @@ package xmlcomparator
 
 import (
 	"fmt"
+	"math"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
+
+const (
+	eps = 1.e-7
+)
+
+var numberPattern = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$`)
+
+type pair struct {
+	key   string
+	value string
+}
 
 // Compares two XML strings.
 //   - sample1 - first XML string
@@ -16,17 +31,17 @@ func CompareXmlString(sample1 string, sample2 string, stopOnFirst bool) []string
 // Compares two XML strings.
 //   - sample1 - first XML string
 //   - sample2 - second XML string
-//   - ignoredDiscrepancies - list of regular expressions to ignore discrepancies
 //   - stopOnFirst - stop comparison on the first difference
+//   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
 func CompareXmlStringEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
 	root1, err := UnmarshalXML(sample1)
 	if root1 == nil || err != nil {
-		return []string{err.Error()}
+		return []string{"Can't parse first sample: " + err.Error()}
 	}
 
 	root2, err := UnmarshalXML(sample2)
 	if root2 == nil || err != nil {
-		return []string{err.Error()}
+		return []string{"Can't parse second sample: " + err.Error()}
 	}
 
 	diffRecorder := CreateDiffRecorder(ignoredDiscrepancies)
@@ -38,28 +53,36 @@ func CompareXmlStringEx(sample1 string, sample2 string, stopOnFirst bool, ignore
 
 func nodesEqual(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
 
-	orgDiffsCount := len(diffRecorder.Messages)
-
-	if node1.XMLName.Local != node2.XMLName.Local && stopOnFirst {
+	if node1.XMLName.Local != node2.XMLName.Local {
 		diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s'", node1.XMLName.Local, node2.XMLName.Local))
-		return false
+		if stopOnFirst {
+			return false
+		}
 	}
-	if node1.XMLName.Space != node2.XMLName.Space && stopOnFirst {
-		diffRecorder.AddMessage(fmt.Sprintf("Node names namespaces: '%s' vs '%s'", node1.XMLName.Space, node2.XMLName.Space))
-		return false
+	if node1.XMLName.Space != node2.XMLName.Space {
+		diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s'", node1.XMLName.Space, node2.XMLName.Space))
+		if stopOnFirst {
+			return false
+		}
 	}
 	if nodesTextDiffer(node1, node2, diffRecorder) && stopOnFirst {
 		return false
 	}
+	if attributesDiffer(node1, node2, diffRecorder) && stopOnFirst {
+		return false
+	}
+	if childrenDiffer(node1, node2, diffRecorder, stopOnFirst) && stopOnFirst {
+		return false
+	}
 
-	return orgDiffsCount == len(diffRecorder.Messages)
+	return true
 }
 
 func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
 
-	ownText1 := removeChildrenText(node1)
-	ownText2 := removeChildrenText(node2)
-	if ownText1 == ownText2 {
+	ownText1 := strings.TrimSpace(node1.CharData)
+	ownText2 := strings.TrimSpace(node2.CharData)
+	if ownText1 == ownText2 || areFieldsTheSameNumbers(ownText1, ownText2) {
 		return false
 	}
 
@@ -67,10 +90,149 @@ func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool 
 	return true
 }
 
-func removeChildrenText(node2 *Node) string {
-	orgText := string(node2.Content)
-	for _, child := range node2.Children {
-		orgText = strings.Replace(orgText, string(child.Content), "", 1)
+func areFieldsTheSameNumbers(text1, text2 string) bool {
+	if numberPattern.MatchString(text1) && numberPattern.MatchString(text2) {
+		val1, _ := strconv.ParseFloat(text1, 32)
+		val2, _ := strconv.ParseFloat(text2, 32)
+		return math.Abs(val2-val1) < eps*(math.Abs(val2)+math.Abs(val1)+eps)
 	}
-	return strings.TrimSpace(orgText)
+	return false
+}
+
+func attributesDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+	if len(node1.Attrs) != len(node2.Attrs) {
+		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d", len(node1.Attrs), len(node2.Attrs)))
+		return false
+	}
+
+	attrMap1 := extractAttributes(node1)
+	attrMap2 := extractAttributes(node2)
+
+	unique1 := make([]pair, 0)
+	unique2 := make([]pair, 0)
+
+	for k, v1 := range attrMap1 {
+		v2, ok := attrMap2[k]
+		if !ok {
+			unique1 = append(unique1, pair{k, v1})
+		}
+		if v1 != v2 {
+			unique1 = append(unique1, pair{k, v1})
+			unique2 = append(unique2, pair{k, v2})
+		}
+	}
+
+	if len(unique1) == 0 && len(unique2) == 0 {
+		return false
+	}
+
+	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v'", unique1, unique2))
+	return true
+}
+
+func extractAttributes(node *Node) map[string]string {
+	attrs := make(map[string]string, len(node.Attrs))
+	for _, attr := range node.Attrs {
+		attrs[attr.Name.Local] = attr.Value
+	}
+	return attrs
+}
+
+func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+
+	childNames1 := childNames(node1)
+	childNames2 := childNames(node2)
+	if SlicesEqual(childNames1, childNames2) {
+		return childrenDifferentByContent(node1, node2, diffRecorder, stopOnFirst)
+	}
+
+	// Positive values in the map belong only to the 1-st node, negative - only to the 2-nd
+	diffMap := make(map[string]int)
+	for _, name := range childNames1 {
+		diffMap[name] = GetOrDefault(diffMap, name, 0) + 1
+	}
+	for _, name := range childNames2 {
+		diffMap[name] = GetOrDefault(diffMap, name, 0) - 1
+	}
+
+	// Leave entries with non-zero values
+	diffNames := make([]string, len(diffMap)/2)
+	for k, v := range diffMap {
+		if v != 0 {
+			diffNames = append(diffNames, k+":"+strconv.Itoa(v))
+		}
+	}
+	var message string
+	sort.Strings(childNames1)
+	sort.Strings(childNames2)
+	if SlicesEqual(childNames1, childNames2) {
+		message = fmt.Sprintf("Children order differ: %d node", len(childNames1))
+	} else {
+		message = fmt.Sprintf("Children differ: %d vs %d (diffs: %s)", len(childNames1), len(childNames2), strings.Join(diffNames, ", "))
+	}
+	diffRecorder.AddMessage(message)
+
+	// Find discrepancies in children with the same "name". Trying to aligne them in case of gaps
+	// Iterate child nodes with the same names only, to avoid clutter
+	i1 := 0
+	i2 := 0
+	for i1 < len(node1.Children) && i2 < len(node2.Children) {
+		child1 := &node1.Children[i1]
+		child2 := &node2.Children[i2]
+		name1 := child1.XMLName.Local
+		name2 := child2.XMLName.Local
+		if name1 == name2 {
+			if !nodesEqual(child1, child2, diffRecorder, stopOnFirst) && stopOnFirst {
+				return true
+			}
+			i1++
+			i2++
+		} else {
+			if diffMap[name1] >= 0 {
+				i1++
+			} else if diffMap[name2] <= 0 {
+				i2++
+			}
+		}
+	}
+
+	return true
+}
+
+// Name includes a list of attributes
+func nodeName(node *Node) string {
+	name := node.XMLName.Local
+	if len(node.Children) > 0 {
+		name += "{"
+		for i, attr := range node.Attrs {
+			if i < len(node.Attrs)-1 {
+				name += ", "
+			}
+			name += attr.Name.Local + "=" + attr.Value
+		}
+		name += "}"
+	}
+	return name
+}
+
+func childNames(node *Node) []string {
+	ret := make([]string, len(node.Children))
+	for _, child := range node.Children {
+		ret = append(ret, nodeName(&child))
+	}
+	return ret
+}
+
+func childrenDifferentByContent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+	if len(node1.Children) != len(node2.Children) {
+		panic("Children lists have different lengths")
+	}
+
+	for i := 0; i < len(node1.Children); i++ {
+		if !nodesEqual(&node1.Children[i], &node2.Children[i], diffRecorder, stopOnFirst) && stopOnFirst {
+			return true
+		}
+	}
+
+	return false
 }

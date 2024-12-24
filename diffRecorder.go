@@ -10,13 +10,13 @@ type DiffRecorder struct {
 
 // Creates an instance of DiffRecorder.
 func CreateDiffRecorder(ignoredDiscrepancies []string) *DiffRecorder {
-	regs := make([]*regexp.Regexp, len(ignoredDiscrepancies))
+	regexes := make([]*regexp.Regexp, len(ignoredDiscrepancies))
 	for i, d := range ignoredDiscrepancies {
-		regs[i] = regexp.MustCompile(d)
+		regexes[i] = regexp.MustCompile(d)
 	}
 
 	return &DiffRecorder{
-		ignoredDiscrepancies: regs,
+		ignoredDiscrepancies: regexes,
 		Messages:             make([]string, 0),
 	}
 }

@@ -10,6 +10,7 @@ type Node struct {
 	XMLName  xml.Name
 	Attrs    []xml.Attr `xml:"-"`
 	Content  []byte     `xml:",innerxml"`
+	CharData string     `xml:",chardata"`
 	Children []Node     `xml:",any"`
 	Parent   *Node      `xml:"-"`
 }
@@ -80,4 +81,34 @@ func (node *Node) Stringify() string {
 	}
 
 	return ret
+}
+
+// Compares two slices of comparable elements (insteaed)
+//   - a - first slice
+//   - b - second slice
+//
+// Returns: `true` if slices are identical, `false` otherwise
+func SlicesEqual[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Gets a value from a map by key or returns a default value if the key is not found
+//   - aMap - map to get value from
+//   - k - key to get value for
+//   - def - default value to return if key is not found
+func GetOrDefault[K comparable, V any](aMap map[K]V, k K, def V) V {
+	if v, ok := aMap[k]; ok {
+		return v
+	}
+	return def
 }
