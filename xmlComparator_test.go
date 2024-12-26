@@ -22,7 +22,7 @@ func TestInvalidStrings(t *testing.T) {
 func TestDifferentNames(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Equal([]string{"Node names differ: 'note' vs 'root'"}, CompareXmlString(xmlString1, xmlString2, true))
+	assert.Equal([]string{"Node names differ: 'note' vs 'root', path='/note'"}, CompareXmlString(xmlString1, xmlString2, true))
 }
 
 func TestDifferentNamespaces(t *testing.T) {
@@ -30,7 +30,7 @@ func TestDifferentNamespaces(t *testing.T) {
 
 	xmlSample1 := `<X:a xmlns:X="space1"><b/><c/></X:a>`
 	xmlSample2 := `<a xmlns="space2"><b/><c/></a>`
-	assert.Equal([]string{"Node namespaces differ: 'space1' vs 'space2'"}, CompareXmlString(xmlSample1, xmlSample2, true))
+	assert.Equal([]string{"Node namespaces differ: 'space1' vs 'space2', path='/a'"}, CompareXmlString(xmlSample1, xmlSample2, true))
 }
 
 func TestIgnoringNamesapcePrefixes(t *testing.T) {
@@ -47,16 +47,15 @@ func TestDifferentAttributes(t *testing.T) {
 	xmlSample1 := `<a attr1="12" attr2="xy"/>`
 	xmlSample2 := `<a attr2="xy"/>`
 	xmlSample3 := `<a attr1="12" attr2="ab"/>`
-	assert.Equal([]string{"Attributes count differ: 2 vs 1"}, CompareXmlString(xmlSample1, xmlSample2, false))
-	assert.Equal([]string{"Attributes differ: '[attr2=xy]' vs '[attr2=ab]'"}, CompareXmlString(xmlSample1, xmlSample3, true))
+	assert.Equal([]string{"Attributes count differ: 2 vs 1, path='/a'"}, CompareXmlString(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Attributes differ: '[attr2=xy]' vs '[attr2=ab]', path='/a'"}, CompareXmlString(xmlSample1, xmlSample3, true))
 
 	xmlSample4 := `<X:a xmlns:X="space1"><b foo=""/><c/></X:a>`
 	xmlSample5 := `<a xmlns="space2"><b foo="bar"/><c/></a>`
 	diffs := CompareXmlString(xmlSample4, xmlSample5, false)
-	assert.Equal(3, len(diffs))
-	assert.Equal("Node namespaces differ: 'space1' vs 'space2'", diffs[0])
-	assert.Equal("Attributes differ: '[xmlns=space1]' vs '[xmlns=space2]'", diffs[1])
-	assert.Equal("Attributes differ: '[foo=]' vs '[foo=bar]'", diffs[2])
+	assert.Equal(2, len(diffs))
+	assert.Equal("Node namespaces differ: 'space1' vs 'space2', path='/a'", diffs[0])
+	assert.Equal("Attributes differ: '[foo=]' vs '[foo=bar]', path='/a/b[0]'", diffs[1])
 }
 
 func TestEqualWithDifferentAttributesOrder(t *testing.T) {
@@ -70,7 +69,8 @@ func TestEqualWithDifferentAttributesOrder(t *testing.T) {
 func TestDifferentCharData(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Equal([]string{"Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements'"}, CompareXmlString(xmlString1, xmlMixed, true))
+	assert.Equal([]string{"Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'"},
+		CompareXmlString(xmlString1, xmlMixed, true))
 }
 
 func TestIgnoringWhitespace(t *testing.T) {
@@ -95,13 +95,13 @@ func TestStoppingOnFirstError(t *testing.T) {
 
 	diffs1 := CompareXmlString(xmlString1, xmlMixed, true)
 	assert.Equal(1, len(diffs1))
-	assert.Equal("Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements'", diffs1[0])
+	assert.Equal("Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'", diffs1[0])
 
 	diffs2 := CompareXmlString(xmlString1, xmlMixed, false)
 	assert.Equal(3, len(diffs2))
 	assert.Equal(diffs1[0], diffs2[0])
-	assert.Equal("Nodes text differ: 'Tove' vs 'Jani'", diffs2[1])
-	assert.Equal("Nodes text differ: 'Jani' vs 'Tove'", diffs2[2])
+	assert.Equal("Nodes text differ: 'Tove' vs 'Jani', path='/note/to[0]'", diffs2[1])
+	assert.Equal("Nodes text differ: 'Jani' vs 'Tove', path='/note/from[1]'", diffs2[2])
 }
 
 func TestIgnoreList(t *testing.T) {
@@ -124,7 +124,7 @@ func TestDifferentElementsOrder(t *testing.T) {
 
 	xmlSample1 := `<a><b/><c/></a>`
 	xmlSample2 := `<a><c/><b/></a>`
-	assert.Equal([]string{"Nodes order differ for 2 nodes"}, CompareXmlString(xmlSample1, xmlSample2, true))
+	assert.Equal([]string{"Children order differ for 2 nodes, path='/a'"}, CompareXmlString(xmlSample1, xmlSample2, true))
 }
 
 func TestAreFieldsTheSameNumbers(t *testing.T) {

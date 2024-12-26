@@ -66,7 +66,7 @@ func UnmarshalXML(xmlString string) (*Node, error) {
 // Path elements are node names separated by slashes.
 //
 // Child element might have its index, unless it is the only child - handy for dealing with arrays.
-func (node *Node) getPathAsString() string {
+func (node *Node) Path() string {
 	path := make([]string, 0)
 	currNode := node
 

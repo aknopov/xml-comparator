@@ -86,7 +86,7 @@ func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bo
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s'", name1, name2))
+	diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s', path='%s'", name1, name2, node1.Path()))
 	return true
 }
 
@@ -97,7 +97,7 @@ func nodeNamespacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorde
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s'", space1, space2))
+	diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s', path='%s'", space1, space2, node1.Path()))
 	return true
 }
 func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
@@ -107,7 +107,7 @@ func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool 
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Nodes text differ: '%s' vs '%s'", ownText1, ownText2))
+	diffRecorder.AddMessage(fmt.Sprintf("Nodes text differ: '%s' vs '%s', path='%s'", ownText1, ownText2, node1.Path()))
 	return true
 }
 
@@ -122,7 +122,7 @@ func stringsAsNumbersEqual(text1, text2 string) bool {
 
 func attributesDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
 	if len(node1.Attrs) != len(node2.Attrs) {
-		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d", len(node1.Attrs), len(node2.Attrs)))
+		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path()))
 		return false
 	}
 
@@ -147,18 +147,17 @@ func attributesDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v'", pairsToString(unique1), pairsToString(unique2)))
+	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v', path='%s'", pairsToString(unique1),
+		pairsToString(unique2), node1.Path()))
 	return true
 }
 
 func extractAttributes(node *Node) map[string]string {
 	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
-		// Namesapce attribute are different from regular ones
+		// Namesapce attributes are processed separately
 		if attr.Name.Space != "xmlns" {
 			attrs[attr.Name.Local] = attr.Value
-		} else {
-			attrs[attr.Name.Space] = attr.Value
 		}
 	}
 	return attrs
@@ -191,9 +190,10 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	sort.Strings(childNames1)
 	sort.Strings(childNames2)
 	if SlicesEqual(childNames1, childNames2) {
-		message = fmt.Sprintf("Nodes order differ for %d nodes", len(childNames1))
+		message = fmt.Sprintf("Children order differ for %d nodes, path='%s'", len(childNames1), node1.Path())
 	} else {
-		message = fmt.Sprintf("Children differ: %d vs %d (diffs: %s)", len(childNames1), len(childNames2), strings.Join(diffNames, ", "))
+		message = fmt.Sprintf("Children differ: %d vs %d (diffs: %s), path='%s'", len(childNames1), len(childNames2),
+			strings.Join(diffNames, ", "), node1.Path())
 	}
 	diffRecorder.AddMessage(message)
 
