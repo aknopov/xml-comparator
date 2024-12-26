@@ -186,6 +186,9 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 			diffNames = append(diffNames, fmt.Sprintf("%s:%+d", k, v))
 		}
 	}
+	// Sort diff names placing first `node1` children for consistent output
+	sort.Slice(diffNames, func(i, j int) bool { return isNameLess(diffNames[i], diffNames[j]) })
+
 	var message string
 	sort.Strings(childNames1)
 	sort.Strings(childNames2)
@@ -200,6 +203,16 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	compareMatchingChildren(node1, node2, diffRecorder, stopOnFirst, diffMap)
 
 	return true
+}
+
+func isNameLess(s1, s2 string) bool {
+	switch {
+	case strings.Contains(s1, ":+") && strings.Contains(s2, ":-"):
+		return true
+	case strings.Contains(s1, ":-") && strings.Contains(s2, ":+"):
+		return false
+	}
+	return s1 < s2
 }
 
 // Attempts to match children by their name of nodes already known not equal.

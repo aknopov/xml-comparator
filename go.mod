@@ -1,6 +1,6 @@
 module github.com/aknopov/xmlcomparator
 
-go 1.23
+go 1.20
 
 require github.com/stretchr/testify v1.10.0
 
