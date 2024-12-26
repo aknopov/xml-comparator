@@ -23,7 +23,6 @@ type XmlPath struct {
 // Walks depth-first through the XML tree calling the function for iteslef and then for each child node
 //   - f - function to call for each node; should return `false` to stop traversiong
 func (node *Node) Walk(f func(*Node) bool) {
-
 	if !f(node) {
 		return
 	}
@@ -64,8 +63,38 @@ func UnmarshalXML(xmlString string) (*Node, error) {
 	return &root, nil
 }
 
+// Creates a string representation of the XML path to the node.
+//
+// Path elements are node names separated by slashes.
+//
+// Child element might have its index, unless it is the only child - handy for dealing with arrays.
+func (node *Node) getPathAsString() string {
+	path := make([]string, 0)
+	currNode := node
+
+	for currNode.Parent != nil {
+		siblings := currNode.Parent.Children
+		if len(siblings) == 1 {
+			path = append(path, "/"+currNode.XMLName.Local)
+		} else {
+			for i := 0; i < len(siblings); i++ {
+				if &siblings[i] == currNode {
+					path = append(path, "/"+currNode.XMLName.Local+"["+strconv.Itoa(i)+"]")
+					break
+				}
+			}
+		}
+		currNode = currNode.Parent
+	}
+	path = append(path, "/"+currNode.XMLName.Local)
+
+	slices.Reverse(path)
+
+	return strings.Join(path, "")
+}
+
 // Converts XML node to a string that includes node name and attribites.
-func (node *Node) Stringify() string {
+func (node *Node) String() string {
 	attStr := ""
 	for i, a := range node.Attrs {
 		attStr += a.Name.Local + "=" + a.Value

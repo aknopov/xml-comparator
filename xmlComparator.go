@@ -20,6 +20,17 @@ type pair struct {
 	value string
 }
 
+func pairsToString(pairs []pair) string {
+	ret := "["
+	for i, p := range pairs {
+		ret += p.key + "=" + p.value
+		if i < len(pairs)-1 {
+			ret += ", "
+		}
+	}
+	return ret + "]"
+}
+
 // Compares two XML strings.
 //   - sample1 - first XML string
 //   - sample2 - second XML string
@@ -52,37 +63,47 @@ func CompareXmlStringEx(sample1 string, sample2 string, stopOnFirst bool, ignore
 }
 
 func nodesEqual(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
-
-	if node1.XMLName.Local != node2.XMLName.Local {
-		diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s'", node1.XMLName.Local, node2.XMLName.Local))
-		if stopOnFirst {
-			return false
-		}
-	}
-	if node1.XMLName.Space != node2.XMLName.Space {
-		diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s'", node1.XMLName.Space, node2.XMLName.Space))
-		if stopOnFirst {
-			return false
-		}
-	}
-	if nodesTextDiffer(node1, node2, diffRecorder) && stopOnFirst {
+	switch {
+	case nodeNamesDifferent(node1, node2, diffRecorder) && stopOnFirst:
 		return false
-	}
-	if attributesDiffer(node1, node2, diffRecorder) && stopOnFirst {
+	case nodeNamespacesDifferent(node1, node2, diffRecorder) && stopOnFirst:
 		return false
-	}
-	if childrenDiffer(node1, node2, diffRecorder, stopOnFirst) && stopOnFirst {
+	case nodesTextDiffer(node1, node2, diffRecorder) && stopOnFirst:
+		return false
+	case attributesDiffer(node1, node2, diffRecorder) && stopOnFirst:
+		return false
+	case childrenDiffer(node1, node2, diffRecorder, stopOnFirst):
 		return false
 	}
 
 	return true
 }
 
-func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+	name1 := node1.XMLName.Local
+	name2 := node2.XMLName.Local
+	if name1 == name2 {
+		return false
+	}
 
+	diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s'", name1, name2))
+	return true
+}
+
+func nodeNamespacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+	space1 := node1.XMLName.Space
+	space2 := node2.XMLName.Space
+	if space1 == space2 || space1 == "" || space2 == "" {
+		return false
+	}
+
+	diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s'", space1, space2))
+	return true
+}
+func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
 	ownText1 := strings.TrimSpace(node1.CharData)
 	ownText2 := strings.TrimSpace(node2.CharData)
-	if ownText1 == ownText2 || areFieldsTheSameNumbers(ownText1, ownText2) {
+	if ownText1 == ownText2 || stringsAsNumbersEqual(ownText1, ownText2) {
 		return false
 	}
 
@@ -90,11 +111,11 @@ func nodesTextDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool 
 	return true
 }
 
-func areFieldsTheSameNumbers(text1, text2 string) bool {
+func stringsAsNumbersEqual(text1, text2 string) bool {
 	if numberPattern.MatchString(text1) && numberPattern.MatchString(text2) {
 		val1, _ := strconv.ParseFloat(text1, 32)
 		val2, _ := strconv.ParseFloat(text2, 32)
-		return math.Abs(val2-val1) < eps*(math.Abs(val2)+math.Abs(val1)+eps)
+		return math.Abs(val2-val1) <= eps*(math.Abs(val2)+math.Abs(val1)+eps)
 	}
 	return false
 }
@@ -126,20 +147,24 @@ func attributesDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v'", unique1, unique2))
+	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v'", pairsToString(unique1), pairsToString(unique2)))
 	return true
 }
 
 func extractAttributes(node *Node) map[string]string {
 	attrs := make(map[string]string, len(node.Attrs))
 	for _, attr := range node.Attrs {
-		attrs[attr.Name.Local] = attr.Value
+		// Namesapce attribute are different from regular ones
+		if attr.Name.Space != "xmlns" {
+			attrs[attr.Name.Local] = attr.Value
+		} else {
+			attrs[attr.Name.Space] = attr.Value
+		}
 	}
 	return attrs
 }
 
 func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
-
 	childNames1 := childNames(node1)
 	childNames2 := childNames(node2)
 	if SlicesEqual(childNames1, childNames2) {
@@ -156,7 +181,7 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	}
 
 	// Leave entries with non-zero values
-	diffNames := make([]string, len(diffMap)/2)
+	diffNames := make([]string, 0, len(diffMap)/2)
 	for k, v := range diffMap {
 		if v != 0 {
 			diffNames = append(diffNames, k+":"+strconv.Itoa(v))
@@ -166,14 +191,20 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	sort.Strings(childNames1)
 	sort.Strings(childNames2)
 	if SlicesEqual(childNames1, childNames2) {
-		message = fmt.Sprintf("Children order differ: %d node", len(childNames1))
+		message = fmt.Sprintf("Nodes order differ for %d nodes", len(childNames1))
 	} else {
 		message = fmt.Sprintf("Children differ: %d vs %d (diffs: %s)", len(childNames1), len(childNames2), strings.Join(diffNames, ", "))
 	}
 	diffRecorder.AddMessage(message)
 
-	// Find discrepancies in children with the same "name". Trying to aligne them in case of gaps
-	// Iterate child nodes with the same names only, to avoid clutter
+	compareMatchingChildren(node1, node2, diffRecorder, stopOnFirst, diffMap)
+
+	return true
+}
+
+// Attempts to match children by their name of nodes already known as non-equal.
+// This is "cheap and cheerful" substitution for a full-blown diff algorithm (Longest Common Subsequence).
+func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool, diffMap map[string]int) {
 	i1 := 0
 	i2 := 0
 	for i1 < len(node1.Children) && i2 < len(node2.Children) {
@@ -182,8 +213,9 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 		name1 := child1.XMLName.Local
 		name2 := child2.XMLName.Local
 		if name1 == name2 {
+			// Recursion!
 			if !nodesEqual(child1, child2, diffRecorder, stopOnFirst) && stopOnFirst {
-				return true
+				return
 			}
 			i1++
 			i2++
@@ -195,8 +227,6 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 			}
 		}
 	}
-
-	return true
 }
 
 // Name includes a list of attributes
@@ -216,7 +246,7 @@ func nodeName(node *Node) string {
 }
 
 func childNames(node *Node) []string {
-	ret := make([]string, len(node.Children))
+	ret := make([]string, 0, len(node.Children))
 	for _, child := range node.Children {
 		ret = append(ret, nodeName(&child))
 	}
@@ -229,6 +259,7 @@ func childrenDifferentByContent(node1 *Node, node2 *Node, diffRecorder *DiffReco
 	}
 
 	for i := 0; i < len(node1.Children); i++ {
+		// Recursion!
 		if !nodesEqual(&node1.Children[i], &node2.Children[i], diffRecorder, stopOnFirst) && stopOnFirst {
 			return true
 		}

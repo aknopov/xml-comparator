@@ -17,10 +17,10 @@ func TestParsing(t *testing.T) {
 		assert.NotNil(child.Parent)
 	}
 
-	assert.Equal("note[color=red]", root.Stringify())
+	assert.Equal("note[color=red]", root.String())
 	assert.Equal(5, len(root.Children))
-	assert.Equal("to[] = Tove", root.Children[0].Stringify())
-	assert.Equal("body[] = Don't forget me this weekend!", root.Children[4].Stringify())
+	assert.Equal("to[] = Tove", root.Children[0].String())
+	assert.Equal("body[] = Don't forget me this weekend!", root.Children[4].String())
 }
 
 func TestParsingFailure(t *testing.T) {
