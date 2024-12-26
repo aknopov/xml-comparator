@@ -3,6 +3,9 @@ package xmlcomparator
 import (
 	"bytes"
 	"encoding/xml"
+	"slices"
+	"strconv"
+	"strings"
 )
 
 // Abstract XML node presentation
@@ -13,11 +16,6 @@ type Node struct {
 	CharData string     `xml:",chardata"`
 	Children []Node     `xml:",any"`
 	Parent   *Node      `xml:"-"`
-}
-
-// Path to an element in XML from the root
-type XmlPath struct {
-	Node Node
 }
 
 // Walks depth-first through the XML tree calling the function for iteslef and then for each child node

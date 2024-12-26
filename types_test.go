@@ -55,3 +55,20 @@ func TestWalking(t *testing.T) {
 		return true
 	})
 }
+
+func TestXmlPathString(t *testing.T) {
+	assert := assert.New(t)
+
+	root, _ := UnmarshalXML(xmlString2)
+
+	assert.Equal("/root", root.getPathAsString())
+	assert.Equal("/root/animal[0]", root.Children[0].getPathAsString())
+	assert.Equal("/root/animal[0]/p[0]", root.Children[0].Children[0].getPathAsString())
+	assert.Equal("/root/animal[0]/dog[1]", root.Children[0].Children[1].getPathAsString())
+	assert.Equal("/root/animal[0]/dog[1]/p", root.Children[0].Children[1].Children[0].getPathAsString())
+	assert.Equal("/root/birds[1]", root.Children[1].getPathAsString())
+	assert.Equal("/root/birds[1]/p[0]", root.Children[1].Children[0].getPathAsString())
+	assert.Equal("/root/birds[1]/p[1]", root.Children[1].Children[1].getPathAsString())
+	assert.Equal("/root/animal[2]", root.Children[2].getPathAsString())
+	assert.Equal("/root/animal[2]/p", root.Children[2].Children[0].getPathAsString())
+}
