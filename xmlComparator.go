@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	eps = 1.e-7
+	eps = 1.e-6
 )
 
 var numberPattern = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$`)
@@ -35,8 +35,8 @@ func pairsToString(pairs []pair) string {
 //   - sample1 - first XML string
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
-func CompareXmlString(sample1 string, sample2 string, stopOnFirst bool) []string {
-	return CompareXmlStringEx(sample1, sample2, stopOnFirst, []string{})
+func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []string {
+	return CompareXmlStringsEx(sample1, sample2, stopOnFirst, []string{})
 }
 
 // Compares two XML strings.
@@ -44,7 +44,7 @@ func CompareXmlString(sample1 string, sample2 string, stopOnFirst bool) []string
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
 //   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
-func CompareXmlStringEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
+func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
 	root1, err := UnmarshalXML(sample1)
 	if root1 == nil || err != nil {
 		return []string{"Can't parse first sample: " + err.Error()}
@@ -183,7 +183,7 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	diffNames := make([]string, 0, len(diffMap)/2)
 	for k, v := range diffMap {
 		if v != 0 {
-			diffNames = append(diffNames, k+":"+strconv.Itoa(v))
+			diffNames = append(diffNames, fmt.Sprintf("%s:%+d", k, v))
 		}
 	}
 	var message string
@@ -202,7 +202,7 @@ func childrenDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	return true
 }
 
-// Attempts to match children by their name of nodes already known as non-equal.
+// Attempts to match children by their name of nodes already known not equal.
 // This is "cheap and cheerful" substitution for a full-blown diff algorithm (Longest Common Subsequence).
 func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool, diffMap map[string]int) {
 	i1 := 0
