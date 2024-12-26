@@ -3,7 +3,6 @@ package xmlcomparator
 import (
 	"bytes"
 	"encoding/xml"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -86,7 +85,11 @@ func (node *Node) Path() string {
 	}
 	path = append(path, "/"+currNode.XMLName.Local)
 
-	slices.Reverse(path)
+	// Why `slices.Reverse(path)` does not work?`
+	size := len(path)
+	for i := 0; i < size/2; i++ {
+		path[i], path[size-i-1] = path[size-i-1], path[i]
+	}
 
 	return strings.Join(path, "")
 }
