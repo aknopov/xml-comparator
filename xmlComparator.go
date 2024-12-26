@@ -260,8 +260,8 @@ func nodeName(node *Node) string {
 
 func childNames(node *Node) []string {
 	ret := make([]string, 0, len(node.Children))
-	for _, child := range node.Children {
-		ret = append(ret, nodeName(&child))
+	for i := range node.Children {
+		ret = append(ret, nodeName(&node.Children[i]))
 	}
 	return ret
 }
