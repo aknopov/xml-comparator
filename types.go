@@ -3,7 +3,6 @@ package xmlcomparator
 import (
 	"bytes"
 	"encoding/xml"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -16,7 +15,7 @@ type Node struct {
 	CharData string     `xml:",chardata"`
 	Children []Node     `xml:",any"`
 	Parent   *Node      `xml:"-"`
-	Hash     int32      `xml:"-"`
+	Hash     int        `xml:"-"`
 }
 
 // Walks depth-first through the XML tree calling the function for iteslef and then for each child node
@@ -122,7 +121,7 @@ func (node *Node) String() string {
 //   - b - second slice
 //
 // Returns: `true` if slices are identical, `false` otherwise
-func SlicesEqual[T comparable](a, b []T) bool {
+func slicesEqual[T comparable](a, b []T) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -149,18 +148,18 @@ func GetOrDefault[K comparable, V any](aMap map[K]V, k K, def V) V {
 
 //------- hash code generation -------
 
-func hashCodeS(s string) int32 {
-	hash := int32(0)
+func hashCodeS(s string) int {
+	hash := 0
 	for _, c := range s {
-		hash = 31*hash + int32(c)
+		hash = 31*hash + int(c)
 	}
 	return hash
 }
 
-func hashCode(node *Node) int32 {
+func hashCode(node *Node) int {
 	hash := 31*hashCodeS(node.XMLName.Local) + hashCodeS(node.CharData)
 	for _, attr := range node.Attrs {
-		hash = 31*(31*hash+hashCodeS(attr.Name.Local) + hashCodeS(attr.Value))
+		hash = 31 * (31*hash + hashCodeS(attr.Name.Local) + hashCodeS(attr.Value))
 	}
 	for _, child := range node.Children {
 		hash = 31*hash + hashCode(&child)
