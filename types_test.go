@@ -52,6 +52,7 @@ func TestWalking(t *testing.T) {
 
 	root.Walk(func(n *Node) bool {
 		assert.True(n.XMLName.Local == "root" || n.Parent != nil)
+		assert.NotZero(n.Hash)
 		return true
 	})
 }

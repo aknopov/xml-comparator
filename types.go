@@ -3,6 +3,7 @@ package xmlcomparator
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,7 @@ type Node struct {
 	CharData string     `xml:",chardata"`
 	Children []Node     `xml:",any"`
 	Parent   *Node      `xml:"-"`
+	Hash     int32      `xml:"-"`
 }
 
 // Walks depth-first through the XML tree calling the function for iteslef and then for each child node
@@ -51,6 +53,8 @@ func UnmarshalXML(xmlString string) (*Node, error) {
 	}
 
 	root.Walk(func(n *Node) bool {
+		n.Hash = hashCode(n)
+
 		for i := range n.Children {
 			n.Children[i].Parent = n
 		}
@@ -141,4 +145,26 @@ func GetOrDefault[K comparable, V any](aMap map[K]V, k K, def V) V {
 		return v
 	}
 	return def
+}
+
+//------- hash code generation -------
+
+func hashCodeS(s string) int32 {
+	hash := int32(0)
+	for _, c := range s {
+		hash = 31*hash + int32(c)
+	}
+	return hash
+}
+
+func hashCode(node *Node) int32 {
+	hash := 31*hashCodeS(node.XMLName.Local) + hashCodeS(node.CharData)
+	for _, attr := range node.Attrs {
+		hash = 31*(31*hash+hashCodeS(attr.Name.Local) + hashCodeS(attr.Value))
+	}
+	for _, child := range node.Children {
+		hash = 31*hash + hashCode(&child)
+	}
+
+	return hash
 }
