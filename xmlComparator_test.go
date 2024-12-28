@@ -146,14 +146,14 @@ func TestDifferentChildren(t *testing.T) {
 
 	xmlSample1 := `<a><b><c/><c/><d/></b></a>`
 	xmlSample2 := `<a><b><d/><e/><e/><e/></b></a>`
-	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: c:+2, e:-3), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: [c:+2, e:-3]), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
 }
 
-func TestAreFieldsTheSameNumbers(t *testing.T) {
+func TestAreEqualNumbers(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.True(stringsAsNumbersEqual("0.2", "0.20"))
-	assert.True(stringsAsNumbersEqual("2", "1.9999997"))
-	assert.False(stringsAsNumbersEqual("1.2", "1,2"))
-	assert.False(stringsAsNumbersEqual("2", "abc"))
+	assert.True(areEqualNumbers("0.2", "0.20"))
+	assert.True(areEqualNumbers("2", "1.9999997"))
+	assert.False(areEqualNumbers("1.2", "1,2"))
+	assert.False(areEqualNumbers("2", "abc"))
 }
