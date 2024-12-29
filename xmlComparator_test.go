@@ -138,7 +138,45 @@ func TestDifferentElementsOrder(t *testing.T) {
 
 	xmlSample1 := `<a><b/><c/></a>`
 	xmlSample2 := `<a><c/><b/></a>`
-	assert.Equal([]string{"Children order differ for 2 nodes, path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, true))
+	assert.Equal([]string{"Children order differ for 2 nodes, path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+}
+
+func TestDifferentElementsOrderByAttributes(t *testing.T) {
+	assert := assert.New(t)
+
+	xmlSample1 := `
+<items version="2.1">
+  <item uid="ca_1">
+    <name>name 1</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_4">
+    <name>name 4</name>
+  </item>
+</items>
+`
+	xmlSample2 := `
+<items version="2.1">
+  <item uid="ca_1">
+    <name>name 1</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_4">
+    <name>name 4</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+</items>
+`
+	assert.Equal([]string{"Children order differ for 4 nodes, path='/items'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
 }
 
 func TestDifferentChildren(t *testing.T) {
@@ -146,7 +184,7 @@ func TestDifferentChildren(t *testing.T) {
 
 	xmlSample1 := `<a><b><c/><c/><d/></b></a>`
 	xmlSample2 := `<a><b><d/><e/><e/><e/></b></a>`
-	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: [c:+2, e:-3]), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: [c[0]:+2, e[1]:-3]), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
 }
 
 func TestAreEqualNumbers(t *testing.T) {

@@ -135,15 +135,14 @@ func slicesEqual[T comparable](a, b []T) bool {
 	return true
 }
 
-// Gets a value from a map by key or returns a default value if the key is not found
-//   - aMap - map to get value from
-//   - k - key to get value for
-//   - def - default value to return if key is not found
-func GetOrDefault[K comparable, V any](aMap map[K]V, k K, def V) V {
-	if v, ok := aMap[k]; ok {
-		return v
+// Finds index of an element in a slice
+func findIndex[T comparable](slice []T, elem T) int {
+	for i := range slice {
+		if slice[i] == elem {
+			return i
+		}
 	}
-	return def
+	return -1
 }
 
 //------- hash code generation -------
@@ -157,13 +156,11 @@ func hashCodeS(s string) int {
 }
 
 func hashCode(node *Node) int {
-	hash := 31*hashCodeS(node.XMLName.Local) + hashCodeS(node.CharData)
+	hash := 31*hashCodeS(node.XMLName.Local) + hashCodeS(strings.TrimSpace(node.CharData))
 	for _, attr := range node.Attrs {
 		hash = 31 * (31*hash + hashCodeS(attr.Name.Local) + hashCodeS(attr.Value))
 	}
-	for _, child := range node.Children {
-		hash = 31*hash + hashCode(&child)
-	}
+	hash = 31*hash + len(node.Children)
 
 	return hash
 }

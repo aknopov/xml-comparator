@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/aknopov/handymaps/ordered"
 )
 
 const (
@@ -51,26 +54,26 @@ func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignor
 
 	diffRecorder := CreateDiffRecorder(ignoredDiscrepancies)
 
-	nodesEqual(root1, root2, diffRecorder, stopOnFirst)
+	nodesDifferent(root1, root2, diffRecorder, stopOnFirst)
 
 	return diffRecorder.Messages
 }
 
-func nodesEqual(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+func nodesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
 	switch {
 	case nodeNamesDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return false
+		return true
 	case nodeSpacesDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return false
+		return true
 	case nodesTextDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return false
-	case attributesDiffer(node1, node2, diffRecorder) && stopOnFirst:
-		return false
+		return true
+	case attributesDifferent(node1, node2, diffRecorder) && stopOnFirst:
+		return true
 	case childrenDifferent(node1, node2, diffRecorder, stopOnFirst):
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
 func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
@@ -127,7 +130,7 @@ func keyValueToString(pairs []keyValue) string {
 	return ret + "]"
 }
 
-func attributesDiffer(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func attributesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
 	if len(node1.Attrs) != len(node2.Attrs) {
 		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path()))
 		return false
@@ -173,43 +176,64 @@ func extractAttributes(node *Node) map[string]string {
 func childrenDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
 	childIds1 := childIds(node1)
 	childIds2 := childIds(node2)
-	if slicesEqual(childIds1, childIds2) {
+
+	if childrenNamesAreEqual(childIds1, childIds2) {
 		return childrenDifferentByContent(node1, node2, diffRecorder, stopOnFirst)
 	}
 
-	// Positive values in the map belong only to the 1-st node, negative - only to the 2-nd
-	diffMap := make(map[nodeId]int) //UC should be LinkedHashMap
-	for _, id := range childIds1 {
-		diffMap[id] = GetOrDefault(diffMap, id, 0) + 1
-	}
-	for _, id := range childIds2 {
-		diffMap[id] = GetOrDefault(diffMap, id, 0) - 1
-	}
-
-	// Leave entries with non-zero values
-	diffNames := make([]string, 0, len(diffMap)/2)
-	for k, v := range diffMap {
-		if v != 0 {
-			diffNames = append(diffNames, fmt.Sprintf("%s:%+d", k.name, v))
-		}
-	}
-	// Sort diff names placing first `node1` children for consistent output
-	sort.Slice(diffNames, func(i, j int) bool { return isNameLess(diffNames[i], diffNames[j]) })
-
-	sort.Slice(childIds1, func(i, j int) bool { return isIdLess(childIds1[i], childIds1[j]) })
-	sort.Slice(childIds2, func(i, j int) bool { return isIdLess(childIds2[i], childIds2[j]) })
-	if slicesEqual(childIds1, childIds2) {
+	if childrenOrderDifferent(childIds1, childIds2) {
 		diffRecorder.AddMessage(fmt.Sprintf("Children order differ for %d nodes, path='%s'", len(childIds1), node1.Path()))
 		// no chance to recover from this
 		return true
 	}
 
-	diffRecorder.AddMessage(
-		fmt.Sprintf("Children differ: %d vs %d (diffs: [%s]), path='%s'", len(childIds1), len(childIds2),
-			strings.Join(diffNames, ", "), node1.Path()))
+	// Positive values in the map belong only to the 1-st node, negative - only to the 2-nd
+	diffMap := ordered.NewOrderedMapEx[nodeId, int](len(childIds1))
+	for _, id := range childIds1 {
+		diffMap.Compute(id, func(_ nodeId, v int) int { return v + 1 })
+	}
+	for _, id := range childIds2 {
+		diffMap.Compute(id, func(_ nodeId, v int) int { return v - 1 })
+	}
 
-	compareMatchingChildren(node1, node2, diffRecorder, stopOnFirst, diffMap)
+	// Leave entries with non-zero values
+	diffNames := make([]string, 0, diffMap.Len()/2)
+	it := diffMap.Iterator()
+	for it.HasNext() {
+		k, v := it.Next()
+		if v != 0 {
+			var childIdx int
+			if v > 0 {
+				childIdx = findIndex(childIds1, k)
+			} else {
+				childIdx = findIndex(childIds2, k)
+			}
+			diffNames = append(diffNames, fmt.Sprintf("%s[%d]:%+d", k.name, childIdx, v))
+		}
+	}
 
+	if len(diffNames) > 0 {
+		// Sort diff names placing first `node1` children for consistent output
+		sort.Slice(diffNames, func(i, j int) bool { return isNameLess(diffNames[i], diffNames[j]) })
+		diffRecorder.AddMessage(
+			fmt.Sprintf("Children differ: %d vs %d (diffs: [%s]), path='%s'", len(childIds1), len(childIds2),
+				strings.Join(diffNames, ", "), node1.Path()))
+	}
+
+	compareMatchingChildren(node1, node2, diffRecorder, stopOnFirst, *diffMap)
+
+	return true
+}
+
+func childrenNamesAreEqual(childIds1, childIds2 []nodeId) bool {
+	if len(childIds1) != len(childIds2) {
+		return false
+	}
+	for i := 0; i < len(childIds1); i++ {
+		if childIds1[i].name != childIds2[i].name {
+			return false
+		}
+	}
 	return true
 }
 
@@ -223,18 +247,9 @@ func isNameLess(s1, s2 string) bool {
 	return s1 < s2
 }
 
-func isIdLess(nodeId1, nodeId2 nodeId) bool {
-	if nodeId1.name < nodeId2.name {
-		return true
-	} else if nodeId1.name > nodeId2.name {
-		return false
-	}
-	return nodeId1.hash < nodeId2.hash
-}
-
-// Attempts to match children by their name of nodes already known not equal.
+// Attempts to match children by their names, already knowing that nodes are not equal.
 // This is "cheap and cheerful" substitution for a full-blown diff algorithm (Longest Common Subsequence).
-func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool, diffMap map[nodeId]int) {
+func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool, diffMap ordered.OrderedMap[nodeId, int]) {
 	i1 := 0
 	i2 := 0
 	for i1 < len(node1.Children) && i2 < len(node2.Children) {
@@ -244,27 +259,19 @@ func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorde
 		id2 := nodeId{child2.XMLName.Local, child2.Hash}
 		if id1 == id2 {
 			// Recursion!
-			if !nodesEqual(child1, child2, diffRecorder, stopOnFirst) && stopOnFirst {
+			if nodesDifferent(child1, child2, diffRecorder, stopOnFirst) && stopOnFirst {
 				return
 			}
 			i1++
 			i2++
 		} else {
-			if diffMap[id1] >= 0 {
+			if c, _ := diffMap.Get(id1); c >= 0 {
 				i1++
-			} else if diffMap[id2] <= 0 {
+			} else if c, _ := diffMap.Get(id2); c <= 0 {
 				i2++
 			}
 		}
 	}
-}
-
-func childIds(node *Node) []nodeId {
-	ret := make([]nodeId, 0, len(node.Children))
-	for i := range node.Children {
-		ret = append(ret, nodeId{node.Children[i].XMLName.Local, node.Children[i].Hash})
-	}
-	return ret
 }
 
 func childrenDifferentByContent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
@@ -274,10 +281,41 @@ func childrenDifferentByContent(node1 *Node, node2 *Node, diffRecorder *DiffReco
 
 	for i := 0; i < len(node1.Children); i++ {
 		// Recursion!
-		if !nodesEqual(&node1.Children[i], &node2.Children[i], diffRecorder, stopOnFirst) && stopOnFirst {
+		if nodesDifferent(&node1.Children[i], &node2.Children[i], diffRecorder, stopOnFirst) && stopOnFirst {
 			return true
 		}
 	}
 
 	return false
+}
+
+// Checking children order is based on childer names as well as their hashcodes (that reflect attributes, char data, etc)
+
+func isIdLess(nodeId1, nodeId2 nodeId) bool {
+	if nodeId1.name < nodeId2.name {
+		return true
+	} else if nodeId1.name > nodeId2.name {
+		return false
+	}
+	return nodeId1.hash < nodeId2.hash
+}
+
+func childIds(node *Node) []nodeId {
+	ret := make([]nodeId, 0, len(node.Children))
+	for _, child := range node.Children {
+		ret = append(ret, nodeId{child.XMLName.Local, hashCode(&child)})
+	}
+	return ret
+}
+
+func childrenOrderDifferent(childIds1 []nodeId, childIds2 []nodeId) bool {
+	if len(childIds1) < 2 || len(childIds1) != len(childIds2) || slicesEqual(childIds1, childIds2) {
+		return false
+	}
+
+	childIds1Sorted := slices.Clone(childIds1)
+	childIds2Sorted := slices.Clone(childIds2)
+	sort.Slice(childIds1Sorted, func(i, j int) bool { return isIdLess(childIds1[i], childIds1[j]) })
+	sort.Slice(childIds1Sorted, func(i, j int) bool { return isIdLess(childIds2[i], childIds2[j]) })
+	return slicesEqual(childIds1Sorted, childIds2Sorted)
 }
