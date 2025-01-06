@@ -242,7 +242,6 @@ func iterateMatchingDiffs(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node]
 	}
 }
 
-// Extracts names with run-length "compression"
 func extractNames(mismatchedDiffs []Diff[Node]) string {
 	names := make([]string, 0, len(mismatchedDiffs))
 
@@ -254,6 +253,7 @@ func extractNames(mismatchedDiffs []Diff[Node]) string {
 	return strings.Join(names, ", ")
 }
 
+// Extracts names with run-length "compression"
 func extractNamesByType(mismatchedDiffs []Diff[Node], diffType DiffType, sign string) []string {
 	names := make([]string, 0)
 	var startIdx, dataIdx int

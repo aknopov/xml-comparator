@@ -25,7 +25,7 @@ func TestDifferentNames(t *testing.T) {
 	assert.Equal([]string{"Node names differ: 'note' vs 'root', path='/note'"}, CompareXmlStrings(xmlString1, xmlString2, true))
 }
 
-func TestDifferentNamespaces(t *testing.T) {
+func TestDifferentNameSpaces(t *testing.T) {
 	assert := assert.New(t)
 
 	xmlSample1 := `<X:a xmlns:X="space1"><b/><c/></X:a>`
@@ -33,7 +33,7 @@ func TestDifferentNamespaces(t *testing.T) {
 	assert.Equal([]string{"Node namespaces differ: 'space1' vs 'space2', path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, true))
 }
 
-func TestIgnoringNamesapcePrefixes(t *testing.T) {
+func TestIgnoringNameSpacePrefixes(t *testing.T) {
 	assert := assert.New(t)
 
 	xmlSample1 := `<X:a xmlns:X="space1"><b/><c/></X:a>`
@@ -90,7 +90,7 @@ func TestIgnoreComments(t *testing.T) {
 	assert.Equal(emptyList, CompareXmlStrings(xmlSample1, xmlSample2, false))
 }
 
-func TestStoppingOnFirstError(t *testing.T) {
+func TestStoppingOnTheFirstError(t *testing.T) {
 	assert := assert.New(t)
 
 	diffs1 := CompareXmlStrings(xmlString1, xmlMixed, true)
@@ -112,8 +112,8 @@ func TestIgnoreList(t *testing.T) {
 
 	xmlString5 := `<a>Node Content</a>`
 	xmlString6 := `<a>Another Content</a>`
-	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+'`})
-	assert.Equal(0, len(diffs))
+	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+', path='/a'`})
+	assert.Equal(emptyList, diffs)
 }
 
 func TestCDataComparison(t *testing.T) {
