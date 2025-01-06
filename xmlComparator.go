@@ -5,11 +5,10 @@ import (
 	"math"
 	"regexp"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/aknopov/handymaps/ordered"
+	"github.com/aknopov/handymaps/bimap"
 )
 
 const (
@@ -21,11 +20,6 @@ var numberPattern = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$
 type keyValue struct {
 	key   string
 	value string
-}
-
-type nodeId struct {
-	name string // name of the node
-	hash int    // hash of the node
 }
 
 // Compares two XML strings.
@@ -59,26 +53,24 @@ func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignor
 	return diffRecorder.Messages
 }
 
-func nodesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+func nodesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) {
 	switch {
 	case nodeNamesDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return true
+		return
 	case nodeSpacesDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return true
+		return
 	case nodesTextDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return true
+		return
 	case attributesDifferent(node1, node2, diffRecorder) && stopOnFirst:
-		return true
+		return
 	case childrenDifferent(node1, node2, diffRecorder, stopOnFirst):
-		return true
+		return
 	}
-
-	return false
 }
 
 func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
-	name1 := node1.XMLName.Local
-	name2 := node2.XMLName.Local
+	name1 := node1.Name()
+	name2 := node2.Name()
 	if name1 == name2 {
 		return false
 	}
@@ -88,8 +80,8 @@ func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bo
 }
 
 func nodeSpacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
-	space1 := node1.XMLName.Space
-	space2 := node2.XMLName.Space
+	space1 := node1.Space()
+	space2 := node2.Space()
 	if space1 == space2 || space1 == "" || space2 == "" {
 		return false
 	}
@@ -101,6 +93,7 @@ func nodeSpacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) b
 }
 func nodesTextDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
 	ownText1 := strings.TrimSpace(node1.CharData)
+
 	ownText2 := strings.TrimSpace(node2.CharData)
 	if ownText1 == ownText2 || areEqualNumbers(ownText1, ownText2) {
 		return false
@@ -117,17 +110,6 @@ func areEqualNumbers(text1, text2 string) bool {
 		return math.Abs(val2-val1) <= eps*(math.Abs(val2)+math.Abs(val1)+eps)
 	}
 	return false
-}
-
-func keyValueToString(pairs []keyValue) string {
-	ret := "["
-	for i, p := range pairs {
-		ret += p.key + "=" + p.value
-		if i < len(pairs)-1 {
-			ret += ", "
-		}
-	}
-	return ret + "]"
 }
 
 func attributesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
@@ -162,160 +144,145 @@ func attributesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) b
 	return true
 }
 
-func extractAttributes(node *Node) map[string]string {
-	attrs := make(map[string]string, len(node.Attrs))
-	for _, attr := range node.Attrs {
-		// Namesapce attributes are processed separately
-		if attr.Name.Space != "xmlns" && attr.Name.Local != "xmlns" {
-			attrs[attr.Name.Local] = attr.Value
+func keyValueToString(pairs []keyValue) string {
+	ret := "["
+	for i, p := range pairs {
+		ret += p.key + "=" + p.value
+		if i < len(pairs)-1 {
+			ret += ", "
 		}
 	}
-	return attrs
+	return ret + "]"
 }
 
 func childrenDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
-	childIds1 := childIds(node1)
-	childIds2 := childIds(node2)
-
-	if childrenNamesAreEqual(childIds1, childIds2) {
-		return childrenDifferentByContent(node1, node2, diffRecorder, stopOnFirst)
-	}
-
-	if childrenOrderDifferent(childIds1, childIds2) {
-		diffRecorder.AddMessage(fmt.Sprintf("Children order differ for %d nodes, path='%s'", len(childIds1), node1.Path()))
-		// no chance to recover from this
-		return true
-	}
-
-	// Positive values in the map belong only to the 1-st node, negative - only to the 2-nd
-	diffMap := ordered.NewOrderedMapEx[nodeId, int](len(childIds1))
-	for _, id := range childIds1 {
-		diffMap.Compute(id, func(_ nodeId, v int) int { return v + 1 })
-	}
-	for _, id := range childIds2 {
-		diffMap.Compute(id, func(_ nodeId, v int) int { return v - 1 })
-	}
-
-	// Leave entries with non-zero values
-	diffNames := make([]string, 0, diffMap.Len()/2)
-	it := diffMap.Iterator()
-	for it.HasNext() {
-		k, v := it.Next()
-		if v != 0 {
-			var childIdx int
-			if v > 0 {
-				childIdx = findIndex(childIds1, k)
-			} else {
-				childIdx = findIndex(childIds2, k)
-			}
-			diffNames = append(diffNames, fmt.Sprintf("%s[%d]:%+d", k.name, childIdx, v))
-		}
-	}
-
-	if len(diffNames) > 0 {
-		// Sort diff names placing first `node1` children for consistent output
-		sort.Slice(diffNames, func(i, j int) bool { return isNameLess(diffNames[i], diffNames[j]) })
-		diffRecorder.AddMessage(
-			fmt.Sprintf("Children differ: %d vs %d (diffs: [%s]), path='%s'", len(childIds1), len(childIds2),
-				strings.Join(diffNames, ", "), node1.Path()))
-	}
-
-	compareMatchingChildren(node1, node2, diffRecorder, stopOnFirst, *diffMap)
-
-	return true
-}
-
-func childrenNamesAreEqual(childIds1, childIds2 []nodeId) bool {
-	if len(childIds1) != len(childIds2) {
+	// Simple case - identical children by hash
+	hashes1 := extractChildHashes(node1)
+	hashes2 := extractChildHashes(node2)
+	if slices.Equal(hashes1, hashes2) {
 		return false
 	}
-	for i := 0; i < len(childIds1); i++ {
-		if childIds1[i].name != childIds2[i].name {
-			return false
-		}
-	}
-	return true
-}
 
-func isNameLess(s1, s2 string) bool {
-	switch {
-	case strings.Contains(s1, ":+") && strings.Contains(s2, ":-"):
-		return true
-	case strings.Contains(s1, ":-") && strings.Contains(s2, ":+"):
-		return false
-	}
-	return s1 < s2
-}
-
-// Attempts to match children by their names, already knowing that nodes are not equal.
-// This is "cheap and cheerful" substitution for a full-blown diff algorithm (Longest Common Subsequence).
-func compareMatchingChildren(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool, diffMap ordered.OrderedMap[nodeId, int]) {
-	i1 := 0
-	i2 := 0
-	for i1 < len(node1.Children) && i2 < len(node2.Children) {
-		child1 := &node1.Children[i1]
-		child2 := &node2.Children[i2]
-		id1 := nodeId{child1.XMLName.Local, child1.Hash}
-		id2 := nodeId{child2.XMLName.Local, child2.Hash}
-		if id1 == id2 {
-			// Recursion!
-			if nodesDifferent(child1, child2, diffRecorder, stopOnFirst) && stopOnFirst {
-				return
-			}
-			i1++
-			i2++
-		} else {
-			if c, _ := diffMap.Get(id1); c >= 0 {
-				i1++
-			} else if c, _ := diffMap.Get(id2); c <= 0 {
-				i2++
-			}
-		}
-	}
-}
-
-func childrenDifferentByContent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
-	if len(node1.Children) != len(node2.Children) {
-		panic("Children lists have different lengths")
-	}
-
-	for i := 0; i < len(node1.Children); i++ {
-		// Recursion!
-		if nodesDifferent(&node1.Children[i], &node2.Children[i], diffRecorder, stopOnFirst) && stopOnFirst {
+	// Simple case - permutation of children
+	if len(hashes1) == len(hashes2) {
+		sortedHashes1 := sortedClone(hashes1, func(x, y uint32) bool { return x < y })
+		sortedHashes2 := sortedClone(hashes2, func(x, y uint32) bool { return x < y })
+		if slices.Equal(sortedHashes1, sortedHashes2) {
+			diffRecorder.AddMessage(fmt.Sprintf("Children order differ for %d nodes, path='%s'", len(hashes1), node1.Path()))
+			// TODO Implement comparison and output of sorted children
 			return true
 		}
 	}
 
-	return false
+	diffs := CompareSequences(node1.Children, node2.Children, func(a, b Node) bool { return a.Hash == b.Hash })
+	compareMatchingChildren(node1, node2, diffs, diffRecorder, stopOnFirst)
+
+	return true
 }
 
-// Checking children order is based on childer names as well as their hashcodes (that reflect attributes, char data, etc)
-
-func isIdLess(nodeId1, nodeId2 nodeId) bool {
-	if nodeId1.name < nodeId2.name {
-		return true
-	} else if nodeId1.name > nodeId2.name {
-		return false
+func extractChildHashes(node *Node) []uint32 {
+	hashes := make([]uint32, len(node.Children))
+	for i := range node.Children {
+		hashes[i] = node.Children[i].Hash
 	}
-	return nodeId1.hash < nodeId2.hash
+	return hashes
 }
 
-func childIds(node *Node) []nodeId {
-	ret := make([]nodeId, 0, len(node.Children))
-	for _, child := range node.Children {
-		ret = append(ret, nodeId{child.XMLName.Local, hashCode(&child)})
+func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+	matchingMap := createMatchingMap(diffs)
+
+	mismatchedDiffs := make([]Diff[Node], 0, len(diffs)/2)
+	for i := 0; i < len(diffs); i++ {
+		if !matchingMap.ContainsValue(i) && !matchingMap.ContainsKey(i) {
+			mismatchedDiffs = append(mismatchedDiffs, diffs[i])
+		}
 	}
-	return ret
+
+	// Log first message for this node
+	if len(mismatchedDiffs) > 0 {
+		diffRecorder.AddMessage(
+			fmt.Sprintf("Children differ: counts %d vs %d (diffs: %s), path='%s'", len(node1.Children), len(node2.Children),
+				extractNames(mismatchedDiffs), node1.Path()))
+	}
+
+	// Recursion!
+	iterateMatchingDiffs(matchingMap, diffs, diffRecorder, stopOnFirst)
 }
 
-func childrenOrderDifferent(childIds1 []nodeId, childIds2 []nodeId) bool {
-	if len(childIds1) < 2 || len(childIds1) != len(childIds2) || slicesEqual(childIds1, childIds2) {
-		return false
+// Matches nodes in diff list by their names and modification operation.
+func createMatchingMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
+	matchingMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
+
+	for i := 0; i < len(diffs); i++ {
+		if matchingMap.ContainsValue(i) {
+			continue
+		}
+
+		complementDiff := DiffAdd
+		if diffs[i].t == DiffAdd {
+			complementDiff = DiffDelete
+		}
+
+		for j := i + 1; j < len(diffs); j++ {
+			if diffs[j].t == complementDiff && diffs[i].aIdx == diffs[j].bIdx && diffs[i].e.Name() == diffs[j].e.Name() {
+				matchingMap.Put(i, j)
+				break
+			}
+		}
 	}
 
-	childIds1Sorted := slices.Clone(childIds1)
-	childIds2Sorted := slices.Clone(childIds2)
-	sort.Slice(childIds1Sorted, func(i, j int) bool { return isIdLess(childIds1[i], childIds1[j]) })
-	sort.Slice(childIds1Sorted, func(i, j int) bool { return isIdLess(childIds2[i], childIds2[j]) })
-	return slicesEqual(childIds1Sorted, childIds2Sorted)
+	return matchingMap
+}
+
+func iterateMatchingDiffs(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+	it := matchingMap.Iterator()
+	for it.HasNext() {
+		i, j := it.Next()
+		nodesDifferent(&diffs[i].e, &diffs[j].e, diffRecorder, stopOnFirst)
+	}
+}
+
+// Extracts names with run-length "compression"
+func extractNames(mismatchedDiffs []Diff[Node]) string {
+	names := make([]string, 0, len(mismatchedDiffs))
+
+	// First names from the first sample (deleted ones)
+	names = append(names, extractNamesByType(mismatchedDiffs, DiffDelete, "+")...)
+	// Then names from the second sample (added ones)
+	names = append(names, extractNamesByType(mismatchedDiffs, DiffAdd, "-")...)
+
+	return strings.Join(names, ", ")
+}
+
+func extractNamesByType(mismatchedDiffs []Diff[Node], diffType DiffType, sign string) []string {
+	names := make([]string, 0)
+	var startIdx, dataIdx int
+	prevName := ""
+
+	for i := range mismatchedDiffs {
+		if mismatchedDiffs[i].t == diffType {
+			if prevName == "" {
+				dataIdx = getDataIdx(mismatchedDiffs[i], diffType)
+				prevName = mismatchedDiffs[i].e.Name()
+				startIdx = i
+			}
+		} else {
+			if prevName != "" {
+				names = append(names, fmt.Sprintf("%s[%d]:%s%d", prevName, dataIdx, sign, i-startIdx))
+			}
+			prevName = ""
+		}
+	}
+	if prevName != "" {
+		names = append(names, fmt.Sprintf("%s[%d]:%s%d", prevName, dataIdx, sign, len(mismatchedDiffs)-startIdx))
+	}
+
+	return names
+}
+
+func getDataIdx(diff Diff[Node], diffType DiffType) int {
+	if diffType == DiffDelete {
+		return diff.aIdx
+	}
+	return diff.bIdx
 }

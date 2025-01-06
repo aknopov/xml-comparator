@@ -184,7 +184,8 @@ func TestDifferentChildren(t *testing.T) {
 
 	xmlSample1 := `<a><b><c/><c/><d/></b></a>`
 	xmlSample2 := `<a><b><d/><e/><e/><e/></b></a>`
-	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: [c[0]:+2, e[1]:-3]), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 3 vs 4 (diffs: c[0]:+2, e[1]:-3), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 4 vs 3 (diffs: e[1]:+3, c[0]:-2), path='/a/b'"}, CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 
 func TestAreEqualNumbers(t *testing.T) {

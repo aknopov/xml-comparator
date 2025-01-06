@@ -37,12 +37,12 @@ func TestNamespaces(t *testing.T) {
 	root, err := UnmarshalXML(soapString)
 	assert.Nil(err)
 
-	assert.Equal("Envelope", root.XMLName.Local)
-	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.XMLName.Space)
-	assert.Equal("Body", root.Children[0].XMLName.Local)
-	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.Children[0].XMLName.Space)
-	assert.Equal("GetQuotation", root.Children[0].Children[0].XMLName.Local)
-	assert.Equal("http://www.xyz.org/quotations", root.Children[0].Children[0].XMLName.Space)
+	assert.Equal("Envelope", root.Name())
+	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.Space())
+	assert.Equal("Body", root.Children[0].Name())
+	assert.Equal("http://www.w3.org/2001/12/soap-envelope", root.Children[0].Space())
+	assert.Equal("GetQuotation", root.Children[0].Children[0].Name())
+	assert.Equal("http://www.xyz.org/quotations", root.Children[0].Children[0].Space())
 }
 
 func TestWalking(t *testing.T) {
@@ -51,7 +51,7 @@ func TestWalking(t *testing.T) {
 	root, _ := UnmarshalXML(xmlString2)
 
 	root.Walk(func(n *Node) bool {
-		assert.True(n.XMLName.Local == "root" || n.Parent != nil)
+		assert.True(n.Name() == "root" || n.Parent != nil)
 		assert.NotZero(n.Hash)
 		return true
 	})
@@ -72,4 +72,18 @@ func TestXmlPathString(t *testing.T) {
 	assert.Equal("/root/birds[1]/p[1]", root.Children[1].Children[1].Path())
 	assert.Equal("/root/animal[2]", root.Children[2].Path())
 	assert.Equal("/root/animal[2]/p", root.Children[2].Children[0].Path())
+}
+
+func TestHashCodeGeneration(t *testing.T) {
+	assert := assert.New(t)
+
+	root1, _ := UnmarshalXML(`<a><b/><c/></a>`)
+	root2, _ := UnmarshalXML(`<a><c/><b/></a>`)
+	assert.NotEqual(root1.Hash, root2.Hash)
+
+	root3, _ := UnmarshalXML(`<a><b>Text</b><c/></a>`)
+	assert.NotEqual(root1.Hash, root3.Hash)
+
+	root4, _ := UnmarshalXML(`<a><b foo="bar"/><c/></a>`)
+	assert.NotEqual(root1.Hash, root4.Hash)
 }
