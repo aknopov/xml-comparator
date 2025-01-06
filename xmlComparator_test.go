@@ -107,8 +107,13 @@ func TestStoppingOnFirstError(t *testing.T) {
 func TestIgnoreList(t *testing.T) {
 	assert := assert.New(t)
 
-	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '\w+' vs '\w+'`})
+	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '.+' vs '.+'`})
 	assert.Equal(1, len(diffs))
+
+	xmlString5 := `<a>Node Content</a>`
+	xmlString6 := `<a>Another Content</a>`
+	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+'`})
+	assert.Equal(0, len(diffs))
 }
 
 func TestCDataComparison(t *testing.T) {
@@ -138,7 +143,45 @@ func TestDifferentElementsOrder(t *testing.T) {
 
 	xmlSample1 := `<a><b/><c/></a>`
 	xmlSample2 := `<a><c/><b/></a>`
-	assert.Equal([]string{"Children order differ for 2 nodes, path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, true))
+	assert.Equal([]string{"Children order differ for 2 nodes, path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+}
+
+func TestDifferentElementsOrderByAttributes(t *testing.T) {
+	assert := assert.New(t)
+
+	xmlSample1 := `
+<items version="2.1">
+  <item uid="ca_1">
+    <name>name 1</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_4">
+    <name>name 4</name>
+  </item>
+</items>
+`
+	xmlSample2 := `
+<items version="2.1">
+  <item uid="ca_1">
+    <name>name 1</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+  <item uid="ca_4">
+    <name>name 4</name>
+  </item>
+  <item uid="ca_2">
+    <name>name 2</name>
+  </item>
+</items>
+`
+	assert.Equal([]string{"Children order differ for 4 nodes, path='/items'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
 }
 
 func TestDifferentChildren(t *testing.T) {
@@ -146,14 +189,15 @@ func TestDifferentChildren(t *testing.T) {
 
 	xmlSample1 := `<a><b><c/><c/><d/></b></a>`
 	xmlSample2 := `<a><b><d/><e/><e/><e/></b></a>`
-	assert.Equal([]string{"Children differ: 3 vs 4 (diffs: c:+2, e:-3), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 3 vs 4 (diffs: c[0]:+2, e[1]:-3), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 4 vs 3 (diffs: e[1]:+3, c[0]:-2), path='/a/b'"}, CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 
-func TestAreFieldsTheSameNumbers(t *testing.T) {
+func TestAreEqualNumbers(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.True(stringsAsNumbersEqual("0.2", "0.20"))
-	assert.True(stringsAsNumbersEqual("2", "1.9999997"))
-	assert.False(stringsAsNumbersEqual("1.2", "1,2"))
-	assert.False(stringsAsNumbersEqual("2", "abc"))
+	assert.True(areEqualNumbers("0.2", "0.20"))
+	assert.True(areEqualNumbers("2", "1.9999997"))
+	assert.False(areEqualNumbers("1.2", "1,2"))
+	assert.False(areEqualNumbers("2", "abc"))
 }

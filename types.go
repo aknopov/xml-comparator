@@ -3,6 +3,8 @@ package xmlcomparator
 import (
 	"bytes"
 	"encoding/xml"
+	"hash/crc32"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -15,9 +17,12 @@ type Node struct {
 	CharData string     `xml:",chardata"`
 	Children []Node     `xml:",any"`
 	Parent   *Node      `xml:"-"`
+	Hash     uint32     `xml:"-"`
 }
 
-// Walks depth-first through the XML tree calling the function for iteslef and then for each child node
+var crc32c = crc32.MakeTable(crc32.Castagnoli)
+
+// Walks breadth-first through the XML tree calling the function for iteslef and then for each child node
 //   - f - function to call for each node; should return `false` to stop traversiong
 func (node *Node) Walk(f func(*Node) bool) {
 	if !f(node) {
@@ -57,6 +62,8 @@ func UnmarshalXML(xmlString string) (*Node, error) {
 		return true
 	})
 
+	root.hashCode()
+
 	return &root, nil
 }
 
@@ -71,21 +78,22 @@ func (node *Node) Path() string {
 
 	for currNode.Parent != nil {
 		siblings := currNode.Parent.Children
+		nodeName := currNode.Name()
 		if len(siblings) == 1 {
-			path = append(path, "/"+currNode.XMLName.Local)
+			path = append(path, "/"+nodeName)
 		} else {
 			for i := 0; i < len(siblings); i++ {
-				if &siblings[i] == currNode {
-					path = append(path, "/"+currNode.XMLName.Local+"["+strconv.Itoa(i)+"]")
+				if siblings[i].Hash == currNode.Hash {
+					path = append(path, "/"+nodeName+"["+strconv.Itoa(i)+"]")
 					break
 				}
 			}
 		}
 		currNode = currNode.Parent
 	}
-	path = append(path, "/"+currNode.XMLName.Local)
+	path = append(path, "/"+currNode.Name())
 
-	// Why `slices.Reverse(path)` does not work?`
+	// Reverse the path
 	size := len(path)
 	for i := 0; i < size/2; i++ {
 		path[i], path[size-i-1] = path[size-i-1], path[i]
@@ -97,14 +105,14 @@ func (node *Node) Path() string {
 // Converts XML node to a string that includes node name and attribites.
 func (node *Node) String() string {
 	attStr := ""
-	for i, a := range node.Attrs {
-		attStr += a.Name.Local + "=" + a.Value
+	for i := range node.Attrs {
+		attStr += AttrName(node.Attrs[i]) + "=" + node.Attrs[i].Value
 		if i < len(node.Attrs)-1 {
 			attStr += ", "
 		}
 	}
 
-	ret := node.XMLName.Local + "[" + attStr + "]"
+	ret := node.Name() + "[" + attStr + "]"
 
 	if len(node.Children) == 0 {
 		ret += " = " + string(node.Content)
@@ -113,32 +121,72 @@ func (node *Node) String() string {
 	return ret
 }
 
-// Compares two slices of comparable elements (insteaed)
-//   - a - first slice
-//   - b - second slice
-//
-// Returns: `true` if slices are identical, `false` otherwise
-func SlicesEqual[T comparable](a, b []T) bool {
-	if len(a) != len(b) {
-		return false
+// Convenience shortcut functions
+
+func (node *Node) Name() string {
+	return node.XMLName.Local
+}
+
+func (node *Node) Space() string {
+	return node.XMLName.Space
+}
+
+func AttrName(attr xml.Attr) string {
+	return attr.Name.Local
+}
+
+func AttrSpace(attr xml.Attr) string {
+	return attr.Name.Space
+}
+
+func AttrValue(attr xml.Attr) string {
+	return attr.Value
+}
+
+func extractAttributes(node *Node) map[string]string {
+	attrs := make(map[string]string, len(node.Attrs))
+	for i := range node.Attrs {
+		// Namesapce attributes are processed separately
+		if !isNameSpaceAttr(node.Attrs[i]) {
+			attrs[AttrName(node.Attrs[i])] = node.Attrs[i].Value
+		}
+	}
+	return attrs
+}
+
+func isNameSpaceAttr(attr xml.Attr) bool {
+	return AttrSpace(attr) == "xmlns" || AttrName(attr) == "xmlns"
+}
+
+func sortedClone[T comparable](slice []T, isLess func(T, T) bool) []T {
+	ret := make([]T, len(slice))
+	copy(ret, slice)
+	sort.Slice(ret, func(i, j int) bool { return isLess(ret[i], ret[j]) })
+	return ret
+}
+
+//------- hash code generation -------
+
+// Recursive function
+func (node *Node) hashCode() uint32 {
+	if node.Hash != 0 {
+		return node.Hash
 	}
 
-	for i := range a {
-		if a[i] != b[i] {
-			return false
+	node.Hash = crc32.Checksum([]byte(node.Name()), crc32c)
+	node.Hash = crc32.Update(node.Hash, crc32c, []byte(strings.TrimSpace(node.CharData)))
+
+	for i := range node.Attrs {
+		if !isNameSpaceAttr(node.Attrs[i]) {
+			node.Hash = crc32.Update(node.Hash, crc32c, []byte(AttrName(node.Attrs[i])))
+			node.Hash = crc32.Update(node.Hash, crc32c, []byte(AttrValue(node.Attrs[i])))
 		}
 	}
 
-	return true
-}
-
-// Gets a value from a map by key or returns a default value if the key is not found
-//   - aMap - map to get value from
-//   - k - key to get value for
-//   - def - default value to return if key is not found
-func GetOrDefault[K comparable, V any](aMap map[K]V, k K, def V) V {
-	if v, ok := aMap[k]; ok {
-		return v
+	// Cheap and cheerful
+	for i := range node.Children {
+		node.Hash = 31*node.Hash + node.Children[i].hashCode()
 	}
-	return def
+
+	return node.Hash
 }
