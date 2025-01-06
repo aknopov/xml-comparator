@@ -42,17 +42,16 @@ type Diff[T any] struct {
 
 // `algData` is algorithm data for calculating difference between a and b
 type algData[T any] struct {
-	a, b           []T
-	m, n           int
-	ox, oy         int
-	diffs          []Diff[T]
-	reverse        bool
-	path           []int
-	pointWithRoute []graph
-	contextSize    int
-	maxDiffs       int
-	recordEquals   bool
-	equals         func(x, y T) bool
+	a, b         []T
+	m, n         int
+	ox, oy       int
+	diffs        []Diff[T]
+	reverse      bool
+	paths        []int
+	graphs       []graph
+	maxDiffs     int
+	recordEquals bool
+	equals       func(x, y T) bool
 }
 
 // CompareSequences compares two sequences of any type and returns a list of differences.
@@ -118,7 +117,7 @@ func SerializeDiffs[T any](diffs []Diff[T]) string {
 
 //-------------------------------------------------------------------------
 
-// create is initializer of Diff
+// Initializes algorithm data
 func create[T any](a, b []T, equals func(x, y T) bool) *algData[T] {
 	diff := new(algData[T])
 	m, n := len(a), len(b)
@@ -133,13 +132,12 @@ func create[T any](a, b []T, equals func(x, y T) bool) *algData[T] {
 	diff.m = m
 	diff.n = n
 	diff.reverse = reverse
-	diff.contextSize = 3
 	diff.maxDiffs = defaultMaxDiffs
 	diff.equals = equals
 	return diff
 }
 
-// Diffs return llist of differences between samplea
+// Diffs return the list of differences between samples
 func (diff *algData[T]) Diffs() []Diff[T] {
 	return diff.diffs
 }
@@ -155,12 +153,12 @@ func (diff *algData[T]) doCompare() {
 // Compose diff between samplea
 func (diff *algData[T]) compose() []coord {
 	fp := make([]int, diff.m+diff.n+3)
-	diff.path = make([]int, diff.m+diff.n+3)
-	diff.pointWithRoute = make([]graph, 0)
+	diff.paths = make([]int, diff.m+diff.n+3)
+	diff.graphs = make([]graph, 0)
 
 	for i := range fp {
 		fp[i] = -1
-		diff.path[i] = -1
+		diff.paths[i] = -1
 	}
 
 	offset := diff.m + 1
@@ -176,16 +174,16 @@ func (diff *algData[T]) compose() []coord {
 
 		fp[delta+offset] = diff.snake(delta, fp[delta-1+offset]+1, fp[delta+1+offset], offset)
 
-		if fp[delta+offset] >= diff.n || len(diff.pointWithRoute) > diff.maxDiffs {
+		if fp[delta+offset] >= diff.n || len(diff.graphs) > diff.maxDiffs {
 			break
 		}
 	}
 
-	r := diff.path[delta+offset]
+	r := diff.paths[delta+offset]
 	comparePoints := make([]coord, 0)
 	for r != -1 {
-		comparePoints = append(comparePoints, coord{x: diff.pointWithRoute[r].x, y: diff.pointWithRoute[r].y})
-		r = diff.pointWithRoute[r].r
+		comparePoints = append(comparePoints, coord{x: diff.graphs[r].x, y: diff.graphs[r].y})
+		r = diff.graphs[r].r
 	}
 
 	return comparePoints
@@ -194,9 +192,9 @@ func (diff *algData[T]) compose() []coord {
 func (diff *algData[T]) snake(k, p, pp, offset int) int {
 	r := 0
 	if p > pp {
-		r = diff.path[k-1+offset]
+		r = diff.paths[k-1+offset]
 	} else {
-		r = diff.path[k+1+offset]
+		r = diff.paths[k+1+offset]
 	}
 
 	y := max(p, pp)
@@ -207,8 +205,8 @@ func (diff *algData[T]) snake(k, p, pp, offset int) int {
 		y++
 	}
 
-	diff.path[k+offset] = len(diff.pointWithRoute)
-	diff.pointWithRoute = append(diff.pointWithRoute, graph{x: x, y: y, r: r})
+	diff.paths[k+offset] = len(diff.graphs)
+	diff.graphs = append(diff.graphs, graph{x: x, y: y, r: r})
 
 	return y
 }
