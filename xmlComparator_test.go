@@ -107,8 +107,13 @@ func TestStoppingOnFirstError(t *testing.T) {
 func TestIgnoreList(t *testing.T) {
 	assert := assert.New(t)
 
-	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '\w+' vs '\w+'`})
+	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '.+' vs '.+'`})
 	assert.Equal(1, len(diffs))
+
+	xmlString5 := `<a>Node Content</a>`
+	xmlString6 := `<a>Another Content</a>`
+	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+'`})
+	assert.Equal(0, len(diffs))
 }
 
 func TestCDataComparison(t *testing.T) {
