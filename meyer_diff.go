@@ -44,7 +44,6 @@ type Diff[T any] struct {
 type algData[T any] struct {
 	a, b         []T
 	m, n         int
-	ox, oy       int
 	diffs        []Diff[T]
 	reverse      bool
 	paths        []int
@@ -86,7 +85,7 @@ func CompareSequences[T any](a, b []T, equals func(x, y T) bool) []Diff[T] {
 //   - a The first sequence to compare.
 //   - b The second sequence to compare.
 //   - equals - A comparison function that checks equality of its arguments.
-//   - maxDiffs: The maximum number of differences to analyse.
+//   - maxDiffs: The maximum number of edit graphs to analyse.
 //
 // Returns:
 //
@@ -95,7 +94,9 @@ func CompareSequencesEx[T any](a, b []T, equals func(x, y T) bool, maxDiffs int)
 	diff := create(a, b, equals)
 	diff.recordEquals = false
 	diff.maxDiffs = maxDiffs
-	diff.doCompare()
+
+	diff.recordDiffs(diff.compose())
+
 	return diff.Diffs()
 }
 
@@ -140,14 +141,6 @@ func create[T any](a, b []T, equals func(x, y T) bool) *algData[T] {
 // Diffs return the list of differences between samples
 func (diff *algData[T]) Diffs() []Diff[T] {
 	return diff.diffs
-}
-
-// Compare slices till reaching the end
-func (diff *algData[T]) doCompare() {
-	done := false
-	for !done {
-		done = diff.recordDiffs(diff.compose())
-	}
 }
 
 // Compose diff between samplea
@@ -212,34 +205,34 @@ func (diff *algData[T]) snake(k, p, pp, offset int) int {
 }
 
 //nolint:cyclop // cyclomatic complexity = 13, ignoring for this
-func (diff *algData[T]) recordDiffs(comparerPoints []coord) bool {
+func (diff *algData[T]) recordDiffs(comparePoints []coord) {
 	x, y := 1, 1
 	px, py := 0, 0
-	for i := len(comparerPoints) - 1; i >= 0; i-- {
-		for (px < comparerPoints[i].x) || (py < comparerPoints[i].y) {
+	for i := len(comparePoints) - 1; i >= 0; i-- {
+		for (px < comparePoints[i].x) || (py < comparePoints[i].y) {
 			switch {
-			case (comparerPoints[i].y - comparerPoints[i].x) > (py - px):
+			case (comparePoints[i].y - comparePoints[i].x) > (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffDelete, aIdx: y + diff.oy - 1, bIdx: -1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffDelete, aIdx: y - 1, bIdx: y - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffAdd, aIdx: -1, bIdx: y + diff.oy - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffAdd, aIdx: y - 1, bIdx: y - 1})
 				}
 				y++
 				py++
-			case (comparerPoints[i].y - comparerPoints[i].x) < (py - px):
+			case (comparePoints[i].y - comparePoints[i].x) < (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffAdd, aIdx: -1, bIdx: x + diff.ox - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffAdd, aIdx: x - 1, bIdx: x - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffDelete, aIdx: x + diff.ox - 1, bIdx: -1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffDelete, aIdx: x - 1, bIdx: x - 1})
 				}
 				x++
 				px++
 			default:
 				if diff.recordEquals {
 					if diff.reverse {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffSame, aIdx: y + diff.oy - 1, bIdx: x + diff.ox - 1})
+						diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffSame, aIdx: y - 1, bIdx: x - 1})
 					} else {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffSame, aIdx: x + diff.ox - 1, bIdx: y + diff.oy - 1})
+						diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffSame, aIdx: x - 1, bIdx: y - 1})
 					}
 				}
 				x++
@@ -249,19 +242,6 @@ func (diff *algData[T]) recordDiffs(comparerPoints []coord) bool {
 			}
 		}
 	}
-
-	if x <= diff.m && y <= diff.n {
-		diff.a = diff.a[x-1:]
-		diff.b = diff.b[y-1:]
-		diff.m = len(diff.a)
-		diff.n = len(diff.b)
-		diff.ox = x - 1
-		diff.oy = y - 1
-		return false
-	}
-
-	// all recording succeeded
-	return true
 }
 
 func max(x, y int) int {

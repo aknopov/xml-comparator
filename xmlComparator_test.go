@@ -193,6 +193,18 @@ func TestDifferentChildren(t *testing.T) {
 	assert.Equal([]string{"Children differ: counts 4 vs 3 (diffs: e[1]:+3, c[0]:-2), path='/a/b'"}, CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 
+func TestDifferentChildren2(t *testing.T) {
+	assert := assert.New(t)
+
+	// Edits: DELETE 'c', MODIFY 'd', Add 'e'
+	xmlSample1 := `<a><b><c/><d>1</d></b></a>`
+	xmlSample2 := `<a><b><d>2</d><e/></b></a>`
+	assert.Equal([]string{"Children differ: counts 2 vs 2 (diffs: c[0]:+1, e[1]:-1), path='/a/b'", "Nodes text differ: '1' vs '2', path='/a/b/d[1]'"},
+		CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 2 vs 2 (diffs: e[1]:+1, c[0]:-1), path='/a/b'", "Nodes text differ: '2' vs '1', path='/a/b/d[0]'"},
+		CompareXmlStrings(xmlSample2, xmlSample1, false))
+}
+
 func TestAreEqualNumbers(t *testing.T) {
 	assert := assert.New(t)
 

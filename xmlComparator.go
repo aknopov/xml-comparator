@@ -189,32 +189,33 @@ func extractChildHashes(node *Node) []uint32 {
 }
 
 func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
-	matchingMap := createMatchingMap(diffs)
+	modifiedMap := createModifiedNodesMap(diffs)
 
-	mismatchedDiffs := make([]Diff[Node], 0, len(diffs)/2)
+	unmatchedDiffs := make([]Diff[Node], 0, len(diffs)/2)
 	for i := 0; i < len(diffs); i++ {
-		if !matchingMap.ContainsValue(i) && !matchingMap.ContainsKey(i) {
-			mismatchedDiffs = append(mismatchedDiffs, diffs[i])
+		if !modifiedMap.ContainsValue(i) && !modifiedMap.ContainsKey(i) {
+			unmatchedDiffs = append(unmatchedDiffs, diffs[i])
 		}
 	}
 
 	// Log first message for this node
-	if len(mismatchedDiffs) > 0 {
+	if len(unmatchedDiffs) > 0 {
 		diffRecorder.AddMessage(
 			fmt.Sprintf("Children differ: counts %d vs %d (diffs: %s), path='%s'", len(node1.Children), len(node2.Children),
-				extractNames(mismatchedDiffs), node1.Path()))
+				extractNames(unmatchedDiffs), node1.Path()))
 	}
 
 	// Recursion!
-	iterateMatchingDiffs(matchingMap, diffs, diffRecorder, stopOnFirst)
+	iterateModifiedNodes(modifiedMap, diffs, diffRecorder, stopOnFirst)
 }
 
-// Matches nodes in diff list by their names and modification operation.
-func createMatchingMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
-	matchingMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
+// Matches nodes in diff list there were modified and can be further compared.
+// Matching diffs should have complementary edit operation (add/delete) and the same element name.
+func createModifiedNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
+	modifiedMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
 
 	for i := 0; i < len(diffs); i++ {
-		if matchingMap.ContainsValue(i) {
+		if modifiedMap.ContainsValue(i) {
 			continue
 		}
 
@@ -224,17 +225,21 @@ func createMatchingMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
 		}
 
 		for j := i + 1; j < len(diffs); j++ {
-			if diffs[j].t == complementDiff && diffs[i].aIdx == diffs[j].bIdx && diffs[i].e.Name() == diffs[j].e.Name() {
-				matchingMap.Put(i, j)
+			if modifiedMap.ContainsValue(j) {
+				continue
+			}
+
+			if diffs[j].t == complementDiff && diffs[i].e.Name() == diffs[j].e.Name() {
+				modifiedMap.Put(i, j)
 				break
 			}
 		}
 	}
 
-	return matchingMap
+	return modifiedMap
 }
 
-func iterateMatchingDiffs(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func iterateModifiedNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
 	it := matchingMap.Iterator()
 	for it.HasNext() {
 		i, j := it.Next()

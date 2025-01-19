@@ -16,7 +16,7 @@ func TestSerialization(t *testing.T) {
 
 	diffs := CompareSequences([]rune("abc"), []rune("abd"), equalsFun)
 	sDiff := SerializeDiffs(diffs)
-	assert.Equal("-99[2<->-1]\n+100[-1<->2]\n", sDiff)
+	assert.Equal("-99[2<->2]\n+100[2<->2]\n", sDiff)
 }
 
 func TestStringDiff(t *testing.T) {
@@ -33,8 +33,8 @@ func TestStringDiff(t *testing.T) {
 			a:    "abc",
 			b:    "abd",
 			diff: []Diff[rune]{
-				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: -1},
-				{e: 'd', t: DiffAdd, aIdx: -1, bIdx: 2},
+				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: 2},
+				{e: 'd', t: DiffAdd, aIdx: 2, bIdx: 2},
 			},
 		},
 		{
@@ -42,12 +42,12 @@ func TestStringDiff(t *testing.T) {
 			a:    "abcdef",
 			b:    "dacfea",
 			diff: []Diff[rune]{
-				{e: 'd', t: DiffAdd, aIdx: -1, bIdx: 0},
-				{e: 'b', t: DiffDelete, aIdx: 1, bIdx: -1},
-				{e: 'd', t: DiffDelete, aIdx: 3, bIdx: -1},
-				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: -1},
-				{e: 'e', t: DiffAdd, aIdx: -1, bIdx: 4},
-				{e: 'a', t: DiffAdd, aIdx: -1, bIdx: 5},
+				{e: 'd', t: DiffAdd, aIdx: 0, bIdx: 0},
+				{e: 'b', t: DiffDelete, aIdx: 1, bIdx: 1},
+				{e: 'd', t: DiffDelete, aIdx: 3, bIdx: 3},
+				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: 4},
+				{e: 'e', t: DiffAdd, aIdx: 4, bIdx: 4},
+				{e: 'a', t: DiffAdd, aIdx: 5, bIdx: 5},
 			},
 		},
 		{
@@ -55,42 +55,55 @@ func TestStringDiff(t *testing.T) {
 			a:    "acbdeacbed",
 			b:    "acebdabbabed",
 			diff: []Diff[rune]{
-				{e: 'e', t: DiffAdd, aIdx: -1, bIdx: 2},
-				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: -1},
-				{e: 'c', t: DiffDelete, aIdx: 6, bIdx: -1},
-				{e: 'b', t: DiffAdd, aIdx: -1, bIdx: 7},
-				{e: 'a', t: DiffAdd, aIdx: -1, bIdx: 8},
-				{e: 'b', t: DiffAdd, aIdx: -1, bIdx: 9},
+				{e: 'e', t: DiffAdd, aIdx: 2, bIdx: 2},
+				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: 4},
+				{e: 'c', t: DiffDelete, aIdx: 6, bIdx: 6},
+				{e: 'b', t: DiffAdd, aIdx: 7, bIdx: 7},
+				{e: 'a', t: DiffAdd, aIdx: 8, bIdx: 8},
+				{e: 'b', t: DiffAdd, aIdx: 9, bIdx: 9},
 			},
 		},
 		{
 			name: "string diff4",
-			a:    "abcbda",
-			b:    "bdcaba",
+			a:    "acebdabbabed",
+			b:    "acbdeacbed",
 			diff: []Diff[rune]{
-				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: -1},
-				{e: 'd', t: DiffAdd, aIdx: -1, bIdx: 1},
-				{e: 'a', t: DiffAdd, aIdx: -1, bIdx: 3},
-				{e: 'd', t: DiffDelete, aIdx: 4, bIdx: -1},
+				{e: 'e', t: DiffDelete, aIdx: 2, bIdx: 2},
+				{e: 'e', t: DiffAdd, aIdx: 4, bIdx: 4},
+				{e: 'c', t: DiffAdd, aIdx: 6, bIdx: 6},
+				{e: 'b', t: DiffDelete, aIdx: 7, bIdx: 7},
+				{e: 'a', t: DiffDelete, aIdx: 8, bIdx: 8},
+				{e: 'b', t: DiffDelete, aIdx: 9, bIdx: 9},
 			},
 		},
 		{
 			name: "string diff5",
-			a:    "bokko",
-			b:    "bokkko",
+			a:    "abcbda",
+			b:    "bdcaba",
 			diff: []Diff[rune]{
-				{e: 'k', t: DiffAdd, aIdx: -1, bIdx: 4},
+				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: 0},
+				{e: 'd', t: DiffAdd, aIdx: 1, bIdx: 1},
+				{e: 'a', t: DiffAdd, aIdx: 3, bIdx: 3},
+				{e: 'd', t: DiffDelete, aIdx: 4, bIdx: 4},
 			},
 		},
 		{
 			name: "string diff6",
+			a:    "bokko",
+			b:    "bokkko",
+			diff: []Diff[rune]{
+				{e: 'k', t: DiffAdd, aIdx: 4, bIdx: 4},
+			},
+		},
+		{
+			name: "string diff7",
 			a:    "abcaaaaaabd",
 			b:    "abdaaaaaabc",
 			diff: []Diff[rune]{
-				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: -1},
-				{e: 'd', t: DiffAdd, aIdx: -1, bIdx: 2},
-				{e: 'd', t: DiffDelete, aIdx: 10, bIdx: -1},
-				{e: 'c', t: DiffAdd, aIdx: -1, bIdx: 10},
+				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: 2},
+				{e: 'd', t: DiffAdd, aIdx: 2, bIdx: 2},
+				{e: 'd', t: DiffDelete, aIdx: 10, bIdx: 10},
+				{e: 'c', t: DiffAdd, aIdx: 10, bIdx: 10},
 			},
 		},
 		{
@@ -104,7 +117,7 @@ func TestStringDiff(t *testing.T) {
 			a:    "a",
 			b:    "",
 			diff: []Diff[rune]{
-				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: -1},
+				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: 0},
 			},
 		},
 		{
@@ -112,7 +125,7 @@ func TestStringDiff(t *testing.T) {
 			a:    "",
 			b:    "b",
 			diff: []Diff[rune]{
-				{e: 'b', t: DiffAdd, aIdx: -1, bIdx: 0},
+				{e: 'b', t: DiffAdd, aIdx: 0, bIdx: 0},
 			},
 		},
 		{
@@ -120,8 +133,8 @@ func TestStringDiff(t *testing.T) {
 			a:    "Привет!",
 			b:    "Прювет!",
 			diff: []Diff[rune]{
-				{e: 'и', t: DiffDelete, aIdx: 2, bIdx: -1},
-				{e: 'ю', t: DiffAdd, aIdx: -1, bIdx: 2},
+				{e: 'и', t: DiffDelete, aIdx: 2, bIdx: 2},
+				{e: 'ю', t: DiffAdd, aIdx: 2, bIdx: 2},
 			},
 		},
 	}
@@ -146,10 +159,10 @@ func TestSliceDiff(t *testing.T) {
 			a:    []int{1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9},
 			b:    []int{1, 2, 3, 4, 5, 0, 7, 8, 9},
 			diff: []Diff[int]{
-				{e: 6, t: DiffDelete, aIdx: 5, bIdx: -1},
-				{e: 6, t: DiffDelete, aIdx: 6, bIdx: -1},
-				{e: 6, t: DiffDelete, aIdx: 7, bIdx: -1},
-				{e: 0, t: DiffAdd, aIdx: -1, bIdx: 5},
+				{e: 6, t: DiffDelete, aIdx: 5, bIdx: 5},
+				{e: 6, t: DiffDelete, aIdx: 6, bIdx: 6},
+				{e: 6, t: DiffDelete, aIdx: 7, bIdx: 7},
+				{e: 0, t: DiffAdd, aIdx: 5, bIdx: 5},
 			},
 		},
 		{
@@ -157,8 +170,8 @@ func TestSliceDiff(t *testing.T) {
 			a:    []int{1, 2, 3},
 			b:    []int{1, 5, 3},
 			diff: []Diff[int]{
-				{e: 2, t: DiffDelete, aIdx: 1, bIdx: -1},
-				{e: 5, t: DiffAdd, aIdx: -1, bIdx: 1},
+				{e: 2, t: DiffDelete, aIdx: 1, bIdx: 1},
+				{e: 5, t: DiffAdd, aIdx: 1, bIdx: 1},
 			},
 		},
 		{
@@ -175,27 +188,26 @@ func TestSliceDiff(t *testing.T) {
 	}
 }
 
-func TestPluralDiff(t *testing.T) {
+func TestMaxDiff(t *testing.T) {
 	assert := assert.New(t)
 
-	a := []rune("abc")
-	b := []rune("abd")
-	diffActual := CompareSequencesEx(a, b, equalsFun, 1)
-	diffExpected := []Diff[rune]{
-		{e: 'c', t: DiffDelete, aIdx: 2, bIdx: -1},
-		{e: 'd', t: DiffAdd, aIdx: -1, bIdx: 2},
-	}
+	a := []rune("abcd")
+	b := []rune("dcba")
 
-	assert.True(slices.Equal(diffActual, diffExpected), "want: %v, actual: %v", diffExpected, diffActual)
+	diff1 := CompareSequences(a, b, equalsFun)
+	assert.Equal(6, len(diff1), "want: 6 diffs, actual: %d", len(diff1))
+
+	diff2 := CompareSequencesEx(a, b, equalsFun, 1)
+	assert.Equal(2, len(diff2), "want: 2 diffs, actual: %d", len(diff2))
 }
 
 func TestDiffPluralSubsequence(t *testing.T) {
 	a := []rune("abcaaaaaabd")
 	b := []rune("abdaaaaaabc")
 	// dividing sequences forcibly
-	diffActual := CompareSequencesEx(a, b, equalsFun, 2)
-	if len(diffActual) != 4 {
-		t.Fatalf("diffs length is %d, want 4", len(diffActual))
+	diffActual := CompareSequencesEx(a, b, equalsFun, 1)
+	if len(diffActual) != 2 {
+		t.Fatalf("diffs length is %d, want 2", len(diffActual))
 	}
 }
 
