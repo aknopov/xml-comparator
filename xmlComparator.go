@@ -189,11 +189,11 @@ func extractChildHashes(node *Node) []uint32 {
 }
 
 func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
-	modifiedMap := createModifiedNodesMap(diffs)
+	matchingdMap := createMatchingNodesMap(diffs)
 
 	unmatchedDiffs := make([]Diff[Node], 0, len(diffs)/2)
 	for i := 0; i < len(diffs); i++ {
-		if !modifiedMap.ContainsValue(i) && !modifiedMap.ContainsKey(i) {
+		if !matchingdMap.ContainsValue(i) && !matchingdMap.ContainsKey(i) {
 			unmatchedDiffs = append(unmatchedDiffs, diffs[i])
 		}
 	}
@@ -206,12 +206,12 @@ func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffR
 	}
 
 	// Recursion!
-	iterateModifiedNodes(modifiedMap, diffs, diffRecorder, stopOnFirst)
+	iterateMatchingNodes(matchingdMap, diffs, diffRecorder, stopOnFirst)
 }
 
 // Matches nodes in diff list there were modified and can be further compared.
 // Matching diffs should have complementary edit operation (add/delete) and the same element name.
-func createModifiedNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
+func createMatchingNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
 	modifiedMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
 
 	for i := 0; i < len(diffs); i++ {
@@ -239,7 +239,7 @@ func createModifiedNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
 	return modifiedMap
 }
 
-func iterateModifiedNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
 	it := matchingMap.Iterator()
 	for it.HasNext() {
 		i, j := it.Next()
@@ -267,7 +267,7 @@ func extractNamesByType(mismatchedDiffs []Diff[Node], diffType DiffType, sign st
 	for i := range mismatchedDiffs {
 		if mismatchedDiffs[i].t == diffType {
 			if prevName == "" {
-				dataIdx = getDataIdx(mismatchedDiffs[i], diffType)
+				dataIdx = mismatchedDiffs[i].aIdx
 				prevName = mismatchedDiffs[i].e.Name()
 				startIdx = i
 			}
@@ -283,11 +283,4 @@ func extractNamesByType(mismatchedDiffs []Diff[Node], diffType DiffType, sign st
 	}
 
 	return names
-}
-
-func getDataIdx(diff Diff[Node], diffType DiffType) int {
-	if diffType == DiffDelete {
-		return diff.aIdx
-	}
-	return diff.bIdx
 }
