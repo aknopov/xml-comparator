@@ -1,3 +1,8 @@
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/aknopov/xml-comparator/go.yml)
+![Coveralls](https://img.shields.io/coverallsCoverage/github/aknopov/xml-comparator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Go Reference](https://pkg.go.dev/badge/google.golang.org/xmlcomparator.svg)](https://pkg.go.dev/github.com/aknopov/xmlcomparator)
+
 # XmlComparator
 
 GoLang library for comparing XML strings
@@ -11,7 +16,7 @@ xmlcomparator.CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bo
 ```
 that return a list of detected differences between two XML samples. Comparison can be stopped on the first occasion - `stopOnFirst=true`. The second form takes a list of RegEx strings to be used as a filter for ignored differences.
 
-Each entry in the returned list contains the XML path to the node like  `..., path='/note/to[0]'`. Path elements might contain the zero-based index of an element in the siblings list.
+Each entry in the returned list contains the XML path to the node like  `..., path='/note/to[0]'`. Path elements might contain zero-based index of an element in the siblings list.
 
 When a difference in children elements is detected, the message has the form `Children differ: counts 3 vs 4 (diffs: ...)` where the first number is the count of children in the first sample.
 Mismatched child elements in the `diffs` list have two numbers. The first, in square brackets, is the index in the sibling nodes list.
