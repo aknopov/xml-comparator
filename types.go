@@ -9,22 +9,52 @@ import (
 	"strings"
 )
 
+type DiffType int
+
+const (
+	DiffEqual DiffType = iota
+	DiffName
+	DiffSpace
+	DiffContent
+	DiffAttributes
+	DiffChildren
+	DiffChildrenOrder
+)
+
 // Abstract XML node presentation
 type Node struct {
 	XMLName  xml.Name
-	Attrs    []xml.Attr `xml:"-"`
-	Content  []byte     `xml:",innerxml"`
-	CharData string     `xml:",chardata"`
-	Children []Node     `xml:",any"`
-	Parent   *Node      `xml:"-"`
-	Hash     uint32     `xml:"-"`
+	Attrs    []xml.Attr
+	Content  string
+	Children []Node
+	Parent   *Node
+	Idx      int
+}
+
+type XmlDiff struct {
+	Ref       *Node
+	Type      DiffType
+	Idx       int
+	DiffAttrs []xml.Attr
+	DiffNodes []Node
+}
+
+// For parsing
+type parseNode struct {
+	XMLName  xml.Name
+	Attrs    []xml.Attr  `xml:"-"`
+	Content  []byte      `xml:",innerxml"`
+	CharData string      `xml:",chardata"`
+	Children []parseNode `xml:",any"`
+	Parent   *parseNode  `xml:"-"`
+	Hash     uint32      `xml:"-"`
 }
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
 
 // Walks breadth-first through the XML tree calling the function for iteslef and then for each child node
 //   - f - function to call for each node; should return `false` to stop traversiong
-func (node *Node) Walk(f func(*Node) bool) {
+func (node *parseNode) Walk(f func(*parseNode) bool) {
 	if !f(node) {
 		return
 	}
@@ -35,9 +65,9 @@ func (node *Node) Walk(f func(*Node) bool) {
 }
 
 // Unmarshals XML data into a Node structure - "encoding/xml" package compatible
-func (n *Node) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+func (n *parseNode) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	n.Attrs = start.Attr
-	type node Node
+	type node parseNode
 
 	return d.DecodeElement((*node)(n), &start)
 }
@@ -46,16 +76,16 @@ func (n *Node) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 //   - xmlString - XML string to unmarshal
 //
 // Returns: root node of the XML tree and error if any
-func UnmarshalXML(xmlString string) (*Node, error) {
+func UnmarshalXML(xmlString string) (*parseNode, error) {
 	buf := bytes.NewBuffer([]byte(xmlString))
 	dec := xml.NewDecoder(buf)
 
-	var root Node
+	var root parseNode
 	if err := dec.Decode(&root); err != nil {
 		return nil, err
 	}
 
-	root.Walk(func(n *Node) bool {
+	root.Walk(func(n *parseNode) bool {
 		for i := range n.Children {
 			n.Children[i].Parent = n
 		}
@@ -72,7 +102,7 @@ func UnmarshalXML(xmlString string) (*Node, error) {
 // Path elements are node names separated by slashes.
 //
 // Child element might have its index, unless it is the only child - handy for dealing with arrays.
-func (node *Node) Path() string {
+func (node *parseNode) Path() string {
 	path := make([]string, 0)
 	currNode := node
 
@@ -103,7 +133,7 @@ func (node *Node) Path() string {
 }
 
 // Converts XML node to a string that includes node name and attribites.
-func (node *Node) String() string {
+func (node *parseNode) String() string {
 	attStr := ""
 	for i := range node.Attrs {
 		attStr += AttrName(node.Attrs[i]) + "=" + node.Attrs[i].Value
@@ -123,11 +153,11 @@ func (node *Node) String() string {
 
 // Convenience shortcut functions
 
-func (node *Node) Name() string {
+func (node *parseNode) Name() string {
 	return node.XMLName.Local
 }
 
-func (node *Node) Space() string {
+func (node *parseNode) Space() string {
 	return node.XMLName.Space
 }
 
@@ -143,7 +173,7 @@ func AttrValue(attr xml.Attr) string {
 	return attr.Value
 }
 
-func extractAttributes(node *Node) map[string]string {
+func extractAttributes(node *parseNode) map[string]string {
 	attrs := make(map[string]string, len(node.Attrs))
 	for i := range node.Attrs {
 		// Namesapce attributes are processed separately
@@ -165,10 +195,27 @@ func sortedClone[T comparable](slice []T, isLess func(T, T) bool) []T {
 	return ret
 }
 
+//------- Export conversions -------
+
+// UC func (pNode *parseNode) toNode() Node {
+// 	node := Node{
+// 		XMLName:  pNode.XMLName,
+// 		Attrs:    pNode.Attrs,
+// 		Content:  string(pNode.Content),
+// 		Children: make([]Node, len(pNode.Children)),
+// 	}
+
+// 	for i := range pNode.Children {
+// 		node.Children[i] = pNode.Children[i].toNode()
+// 	}
+
+// 	return node
+// }
+
 //------- hash code generation -------
 
 // Recursive function
-func (node *Node) hashCode() uint32 {
+func (node *parseNode) hashCode() uint32 {
 	if node.Hash != 0 {
 		return node.Hash
 	}

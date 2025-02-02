@@ -12,14 +12,14 @@ const (
 	defaultMaxDiffs = 2000000
 )
 
-// DiffType is manipulation type
-type DiffType int
+// editType is manipulation type
+type editType int
 
 // Type of modification
 const (
-	DiffDelete DiffType = iota // deleted element
-	DiffSame                   // same element
-	DiffAdd                    // added element
+	diffDelete editType = iota // deleted element
+	diffSame                   // same element
+	diffAdd                    // added element
 )
 
 // `coord` is a coordinate in edit graph
@@ -35,7 +35,7 @@ type graph struct {
 // `Diff` is shortest edit script
 type Diff[T any] struct {
 	e    T
-	t    DiffType
+	t    editType
 	aIdx int
 	bIdx int
 }
@@ -105,11 +105,11 @@ func SerializeDiffs[T any](diffs []Diff[T]) string {
 	var buf bytes.Buffer
 	for i := range diffs {
 		switch diffs[i].t {
-		case DiffDelete:
+		case diffDelete:
 			fmt.Fprintf(&buf, "-%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
-		case DiffAdd:
+		case diffAdd:
 			fmt.Fprintf(&buf, "+%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
-		case DiffSame:
+		case diffSame:
 			fmt.Fprintf(&buf, "=%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
 		}
 	}
@@ -213,26 +213,26 @@ func (diff *algData[T]) recordDiffs(comparePoints []coord) {
 			switch {
 			case (comparePoints[i].y - comparePoints[i].x) > (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffDelete, aIdx: y - 1, bIdx: y - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: diffDelete, aIdx: y - 1, bIdx: y - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffAdd, aIdx: y - 1, bIdx: y - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: diffAdd, aIdx: y - 1, bIdx: y - 1})
 				}
 				y++
 				py++
 			case (comparePoints[i].y - comparePoints[i].x) < (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffAdd, aIdx: x - 1, bIdx: x - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: diffAdd, aIdx: x - 1, bIdx: x - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffDelete, aIdx: x - 1, bIdx: x - 1})
+					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: diffDelete, aIdx: x - 1, bIdx: x - 1})
 				}
 				x++
 				px++
 			default:
 				if diff.recordEquals {
 					if diff.reverse {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffSame, aIdx: y - 1, bIdx: x - 1})
+						diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: diffSame, aIdx: y - 1, bIdx: x - 1})
 					} else {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffSame, aIdx: x - 1, bIdx: y - 1})
+						diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: diffSame, aIdx: x - 1, bIdx: y - 1})
 					}
 				}
 				x++

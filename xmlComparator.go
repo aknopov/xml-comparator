@@ -53,7 +53,7 @@ func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignor
 	return diffRecorder.Messages
 }
 
-func nodesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) {
+func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) {
 	switch {
 	case nodeNamesDifferent(node1, node2, diffRecorder) && stopOnFirst:
 		return
@@ -68,7 +68,7 @@ func nodesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOn
 	}
 }
 
-func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
 	name1 := node1.Name()
 	name2 := node2.Name()
 	if name1 == name2 {
@@ -79,7 +79,7 @@ func nodeNamesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bo
 	return true
 }
 
-func nodeSpacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
 	space1 := node1.Space()
 	space2 := node2.Space()
 	if space1 == space2 || space1 == "" || space2 == "" {
@@ -91,7 +91,7 @@ func nodeSpacesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) b
 	}
 	return true
 }
-func nodesTextDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func nodesTextDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
 	ownText1 := strings.TrimSpace(node1.CharData)
 
 	ownText2 := strings.TrimSpace(node2.CharData)
@@ -112,7 +112,7 @@ func areEqualNumbers(text1, text2 string) bool {
 	return false
 }
 
-func attributesDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder) bool {
+func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
 	if len(node1.Attrs) != len(node2.Attrs) {
 		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path()))
 		return false
@@ -155,7 +155,7 @@ func keyValueToString(pairs []keyValue) string {
 	return ret + "]"
 }
 
-func childrenDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
 	// Simple case - identical children by hash
 	hashes1 := extractChildHashes(node1)
 	hashes2 := extractChildHashes(node2)
@@ -174,13 +174,13 @@ func childrenDifferent(node1 *Node, node2 *Node, diffRecorder *DiffRecorder, sto
 		}
 	}
 
-	diffs := CompareSequences(node1.Children, node2.Children, func(a, b Node) bool { return a.Hash == b.Hash })
+	diffs := CompareSequences(node1.Children, node2.Children, func(a, b parseNode) bool { return a.Hash == b.Hash })
 	compareMatchingChildren(node1, node2, diffs, diffRecorder, stopOnFirst)
 
 	return true
 }
 
-func extractChildHashes(node *Node) []uint32 {
+func extractChildHashes(node *parseNode) []uint32 {
 	hashes := make([]uint32, len(node.Children))
 	for i := range node.Children {
 		hashes[i] = node.Children[i].Hash
@@ -188,10 +188,10 @@ func extractChildHashes(node *Node) []uint32 {
 	return hashes
 }
 
-func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func compareMatchingChildren(node1 *parseNode, node2 *parseNode, diffs []Diff[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
 	matchingdMap := createMatchingNodesMap(diffs)
 
-	unmatchedDiffs := make([]Diff[Node], 0, len(diffs)/2)
+	unmatchedDiffs := make([]Diff[parseNode], 0, len(diffs)/2)
 	for i := 0; i < len(diffs); i++ {
 		if !matchingdMap.ContainsValue(i) && !matchingdMap.ContainsKey(i) {
 			unmatchedDiffs = append(unmatchedDiffs, diffs[i])
@@ -211,7 +211,7 @@ func compareMatchingChildren(node1 *Node, node2 *Node, diffs []Diff[Node], diffR
 
 // Matches nodes in diff list there were modified and can be further compared.
 // Matching diffs should have complementary edit operation (add/delete) and the same element name.
-func createMatchingNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
+func createMatchingNodesMap(diffs []Diff[parseNode]) *bimap.BiMap[int, int] {
 	modifiedMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
 
 	for i := 0; i < len(diffs); i++ {
@@ -219,9 +219,9 @@ func createMatchingNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
 			continue
 		}
 
-		complementDiff := DiffAdd
-		if diffs[i].t == DiffAdd {
-			complementDiff = DiffDelete
+		complementDiff := diffAdd
+		if diffs[i].t == diffAdd {
+			complementDiff = diffDelete
 		}
 
 		for j := i + 1; j < len(diffs); j++ {
@@ -239,7 +239,7 @@ func createMatchingNodesMap(diffs []Diff[Node]) *bimap.BiMap[int, int] {
 	return modifiedMap
 }
 
-func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
 	it := matchingMap.Iterator()
 	for it.HasNext() {
 		i, j := it.Next()
@@ -247,19 +247,19 @@ func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[Node]
 	}
 }
 
-func extractNames(mismatchedDiffs []Diff[Node]) string {
+func extractNames(mismatchedDiffs []Diff[parseNode]) string {
 	names := make([]string, 0, len(mismatchedDiffs))
 
 	// First names from the first sample (deleted ones)
-	names = append(names, extractNamesByType(mismatchedDiffs, DiffDelete, "+")...)
+	names = append(names, extractNamesByType(mismatchedDiffs, diffDelete, "+")...)
 	// Then names from the second sample (added ones)
-	names = append(names, extractNamesByType(mismatchedDiffs, DiffAdd, "-")...)
+	names = append(names, extractNamesByType(mismatchedDiffs, diffAdd, "-")...)
 
 	return strings.Join(names, ", ")
 }
 
 // Extracts names with run-length "compression"
-func extractNamesByType(mismatchedDiffs []Diff[Node], diffType DiffType, sign string) []string {
+func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, sign string) []string {
 	names := make([]string, 0)
 	var startIdx, dataIdx int
 	prevName := ""

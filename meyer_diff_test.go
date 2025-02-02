@@ -33,8 +33,8 @@ func TestStringDiff(t *testing.T) {
 			a:    "abc",
 			b:    "abd",
 			diff: []Diff[rune]{
-				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: 2},
-				{e: 'd', t: DiffAdd, aIdx: 2, bIdx: 2},
+				{e: 'c', t: diffDelete, aIdx: 2, bIdx: 2},
+				{e: 'd', t: diffAdd, aIdx: 2, bIdx: 2},
 			},
 		},
 		{
@@ -42,12 +42,12 @@ func TestStringDiff(t *testing.T) {
 			a:    "abcdef",
 			b:    "dacfea",
 			diff: []Diff[rune]{
-				{e: 'd', t: DiffAdd, aIdx: 0, bIdx: 0},
-				{e: 'b', t: DiffDelete, aIdx: 1, bIdx: 1},
-				{e: 'd', t: DiffDelete, aIdx: 3, bIdx: 3},
-				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: 4},
-				{e: 'e', t: DiffAdd, aIdx: 4, bIdx: 4},
-				{e: 'a', t: DiffAdd, aIdx: 5, bIdx: 5},
+				{e: 'd', t: diffAdd, aIdx: 0, bIdx: 0},
+				{e: 'b', t: diffDelete, aIdx: 1, bIdx: 1},
+				{e: 'd', t: diffDelete, aIdx: 3, bIdx: 3},
+				{e: 'e', t: diffDelete, aIdx: 4, bIdx: 4},
+				{e: 'e', t: diffAdd, aIdx: 4, bIdx: 4},
+				{e: 'a', t: diffAdd, aIdx: 5, bIdx: 5},
 			},
 		},
 		{
@@ -55,12 +55,12 @@ func TestStringDiff(t *testing.T) {
 			a:    "acbdeacbed",
 			b:    "acebdabbabed",
 			diff: []Diff[rune]{
-				{e: 'e', t: DiffAdd, aIdx: 2, bIdx: 2},
-				{e: 'e', t: DiffDelete, aIdx: 4, bIdx: 4},
-				{e: 'c', t: DiffDelete, aIdx: 6, bIdx: 6},
-				{e: 'b', t: DiffAdd, aIdx: 7, bIdx: 7},
-				{e: 'a', t: DiffAdd, aIdx: 8, bIdx: 8},
-				{e: 'b', t: DiffAdd, aIdx: 9, bIdx: 9},
+				{e: 'e', t: diffAdd, aIdx: 2, bIdx: 2},
+				{e: 'e', t: diffDelete, aIdx: 4, bIdx: 4},
+				{e: 'c', t: diffDelete, aIdx: 6, bIdx: 6},
+				{e: 'b', t: diffAdd, aIdx: 7, bIdx: 7},
+				{e: 'a', t: diffAdd, aIdx: 8, bIdx: 8},
+				{e: 'b', t: diffAdd, aIdx: 9, bIdx: 9},
 			},
 		},
 		{
@@ -68,12 +68,12 @@ func TestStringDiff(t *testing.T) {
 			a:    "acebdabbabed",
 			b:    "acbdeacbed",
 			diff: []Diff[rune]{
-				{e: 'e', t: DiffDelete, aIdx: 2, bIdx: 2},
-				{e: 'e', t: DiffAdd, aIdx: 4, bIdx: 4},
-				{e: 'c', t: DiffAdd, aIdx: 6, bIdx: 6},
-				{e: 'b', t: DiffDelete, aIdx: 7, bIdx: 7},
-				{e: 'a', t: DiffDelete, aIdx: 8, bIdx: 8},
-				{e: 'b', t: DiffDelete, aIdx: 9, bIdx: 9},
+				{e: 'e', t: diffDelete, aIdx: 2, bIdx: 2},
+				{e: 'e', t: diffAdd, aIdx: 4, bIdx: 4},
+				{e: 'c', t: diffAdd, aIdx: 6, bIdx: 6},
+				{e: 'b', t: diffDelete, aIdx: 7, bIdx: 7},
+				{e: 'a', t: diffDelete, aIdx: 8, bIdx: 8},
+				{e: 'b', t: diffDelete, aIdx: 9, bIdx: 9},
 			},
 		},
 		{
@@ -81,10 +81,10 @@ func TestStringDiff(t *testing.T) {
 			a:    "abcbda",
 			b:    "bdcaba",
 			diff: []Diff[rune]{
-				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: 0},
-				{e: 'd', t: DiffAdd, aIdx: 1, bIdx: 1},
-				{e: 'a', t: DiffAdd, aIdx: 3, bIdx: 3},
-				{e: 'd', t: DiffDelete, aIdx: 4, bIdx: 4},
+				{e: 'a', t: diffDelete, aIdx: 0, bIdx: 0},
+				{e: 'd', t: diffAdd, aIdx: 1, bIdx: 1},
+				{e: 'a', t: diffAdd, aIdx: 3, bIdx: 3},
+				{e: 'd', t: diffDelete, aIdx: 4, bIdx: 4},
 			},
 		},
 		{
@@ -92,7 +92,7 @@ func TestStringDiff(t *testing.T) {
 			a:    "bokko",
 			b:    "bokkko",
 			diff: []Diff[rune]{
-				{e: 'k', t: DiffAdd, aIdx: 4, bIdx: 4},
+				{e: 'k', t: diffAdd, aIdx: 4, bIdx: 4},
 			},
 		},
 		{
@@ -100,10 +100,10 @@ func TestStringDiff(t *testing.T) {
 			a:    "abcaaaaaabd",
 			b:    "abdaaaaaabc",
 			diff: []Diff[rune]{
-				{e: 'c', t: DiffDelete, aIdx: 2, bIdx: 2},
-				{e: 'd', t: DiffAdd, aIdx: 2, bIdx: 2},
-				{e: 'd', t: DiffDelete, aIdx: 10, bIdx: 10},
-				{e: 'c', t: DiffAdd, aIdx: 10, bIdx: 10},
+				{e: 'c', t: diffDelete, aIdx: 2, bIdx: 2},
+				{e: 'd', t: diffAdd, aIdx: 2, bIdx: 2},
+				{e: 'd', t: diffDelete, aIdx: 10, bIdx: 10},
+				{e: 'c', t: diffAdd, aIdx: 10, bIdx: 10},
 			},
 		},
 		{
@@ -117,7 +117,7 @@ func TestStringDiff(t *testing.T) {
 			a:    "a",
 			b:    "",
 			diff: []Diff[rune]{
-				{e: 'a', t: DiffDelete, aIdx: 0, bIdx: 0},
+				{e: 'a', t: diffDelete, aIdx: 0, bIdx: 0},
 			},
 		},
 		{
@@ -125,7 +125,7 @@ func TestStringDiff(t *testing.T) {
 			a:    "",
 			b:    "b",
 			diff: []Diff[rune]{
-				{e: 'b', t: DiffAdd, aIdx: 0, bIdx: 0},
+				{e: 'b', t: diffAdd, aIdx: 0, bIdx: 0},
 			},
 		},
 		{
@@ -133,8 +133,8 @@ func TestStringDiff(t *testing.T) {
 			a:    "Привет!",
 			b:    "Прювет!",
 			diff: []Diff[rune]{
-				{e: 'и', t: DiffDelete, aIdx: 2, bIdx: 2},
-				{e: 'ю', t: DiffAdd, aIdx: 2, bIdx: 2},
+				{e: 'и', t: diffDelete, aIdx: 2, bIdx: 2},
+				{e: 'ю', t: diffAdd, aIdx: 2, bIdx: 2},
 			},
 		},
 	}
@@ -159,10 +159,10 @@ func TestSliceDiff(t *testing.T) {
 			a:    []int{1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9},
 			b:    []int{1, 2, 3, 4, 5, 0, 7, 8, 9},
 			diff: []Diff[int]{
-				{e: 6, t: DiffDelete, aIdx: 5, bIdx: 5},
-				{e: 6, t: DiffDelete, aIdx: 6, bIdx: 6},
-				{e: 6, t: DiffDelete, aIdx: 7, bIdx: 7},
-				{e: 0, t: DiffAdd, aIdx: 5, bIdx: 5},
+				{e: 6, t: diffDelete, aIdx: 5, bIdx: 5},
+				{e: 6, t: diffDelete, aIdx: 6, bIdx: 6},
+				{e: 6, t: diffDelete, aIdx: 7, bIdx: 7},
+				{e: 0, t: diffAdd, aIdx: 5, bIdx: 5},
 			},
 		},
 		{
@@ -170,8 +170,8 @@ func TestSliceDiff(t *testing.T) {
 			a:    []int{1, 2, 3},
 			b:    []int{1, 5, 3},
 			diff: []Diff[int]{
-				{e: 2, t: DiffDelete, aIdx: 1, bIdx: 1},
-				{e: 5, t: DiffAdd, aIdx: 1, bIdx: 1},
+				{e: 2, t: diffDelete, aIdx: 1, bIdx: 1},
+				{e: 5, t: diffAdd, aIdx: 1, bIdx: 1},
 			},
 		},
 		{

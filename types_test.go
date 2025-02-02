@@ -50,7 +50,7 @@ func TestWalking(t *testing.T) {
 
 	root, _ := UnmarshalXML(xmlString2)
 
-	root.Walk(func(n *Node) bool {
+	root.Walk(func(n *parseNode) bool {
 		assert.True(n.Name() == "root" || n.Parent != nil)
 		assert.NotZero(n.Hash)
 		return true
