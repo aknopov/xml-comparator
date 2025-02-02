@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -36,14 +37,14 @@ func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []strin
 //   - stopOnFirst - stop comparison on the first difference
 //   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
 func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
-	root1, err := UnmarshalXML(sample1)
+	root1, err := parseXML(sample1)
 	if root1 == nil || err != nil {
-		return []string{"Can't parse first sample: " + err.Error()}
+		return []string{"Can't parse the first sample: " + err.Error()}
 	}
 
-	root2, err := UnmarshalXML(sample2)
+	root2, err := parseXML(sample2)
 	if root2 == nil || err != nil {
-		return []string{"Can't parse second sample: " + err.Error()}
+		return []string{"Can't parse the second sample: " + err.Error()}
 	}
 
 	diffRecorder := CreateDiffRecorder(ignoredDiscrepancies)
@@ -69,8 +70,8 @@ func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecord
 }
 
 func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
-	name1 := node1.Name()
-	name2 := node2.Name()
+	name1 := nodeName(node1)
+	name2 := nodeName(node2)
 	if name1 == name2 {
 		return false
 	}
@@ -80,8 +81,8 @@ func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 }
 
 func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
-	space1 := node1.Space()
-	space2 := node2.Space()
+	space1 := nodeSpace(node1)
+	space2 := nodeSpace(node2)
 	if space1 == space2 || space1 == "" || space2 == "" {
 		return false
 	}
@@ -229,7 +230,7 @@ func createMatchingNodesMap(diffs []Diff[parseNode]) *bimap.BiMap[int, int] {
 				continue
 			}
 
-			if diffs[j].t == complementDiff && diffs[i].e.Name() == diffs[j].e.Name() {
+			if diffs[j].t == complementDiff && nodeName(&diffs[i].e) == nodeName(&diffs[j].e) {
 				modifiedMap.Put(i, j)
 				break
 			}
@@ -268,7 +269,7 @@ func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, si
 		if mismatchedDiffs[i].t == diffType {
 			if prevName == "" {
 				dataIdx = mismatchedDiffs[i].aIdx
-				prevName = mismatchedDiffs[i].e.Name()
+				prevName = nodeName(&mismatchedDiffs[i].e)
 				startIdx = i
 			}
 		} else {
@@ -283,4 +284,22 @@ func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, si
 	}
 
 	return names
+}
+
+func extractAttributes(node *parseNode) map[string]string {
+	attrs := make(map[string]string, len(node.Attrs))
+	for i := range node.Attrs {
+		// Namesapce attributes are processed separately
+		if !isNameSpaceAttr(node.Attrs[i]) {
+			attrs[attrName(node.Attrs[i])] = node.Attrs[i].Value
+		}
+	}
+	return attrs
+}
+
+func sortedClone[T comparable](slice []T, isLess func(T, T) bool) []T {
+	ret := make([]T, len(slice))
+	copy(ret, slice)
+	sort.Slice(ret, func(i, j int) bool { return isLess(ret[i], ret[j]) })
+	return ret
 }
