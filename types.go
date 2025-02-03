@@ -78,7 +78,7 @@ func (node *parseNode) Path() string {
 func (node *parseNode) String() string {
 	attStr := ""
 	for i := range node.Attrs {
-		attStr += attrName(node.Attrs[i]) + "=" + node.Attrs[i].Value
+		attStr += attrName(&node.Attrs[i]) + "=" + node.Attrs[i].Value
 		if i < len(node.Attrs)-1 {
 			attStr += ", "
 		}
@@ -102,18 +102,18 @@ func nodeSpace(node *parseNode) string {
 	return node.XMLName.Space
 }
 
-func attrName(attr xml.Attr) string {
+func attrName(attr *xml.Attr) string {
 	return attr.Name.Local
 }
 
-func attrSpace(attr xml.Attr) string {
+func attrSpace(attr *xml.Attr) string {
 	return attr.Name.Space
 }
 
-func attrValue(attr xml.Attr) string {
+func attrValue(attr *xml.Attr) string {
 	return attr.Value
 }
 
-func isNameSpaceAttr(attr xml.Attr) bool {
+func isNameSpaceAttr(attr *xml.Attr) bool {
 	return attrSpace(attr) == "xmlns" || attrName(attr) == "xmlns"
 }

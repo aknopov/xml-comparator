@@ -76,9 +76,10 @@ func (node *parseNode) hashCode() uint32 {
 	node.Hash = crc32.Update(node.Hash, crc32c, []byte(strings.TrimSpace(node.CharData)))
 
 	for i := range node.Attrs {
-		if !isNameSpaceAttr(node.Attrs[i]) {
-			node.Hash = crc32.Update(node.Hash, crc32c, []byte(attrName(node.Attrs[i])))
-			node.Hash = crc32.Update(node.Hash, crc32c, []byte(attrValue(node.Attrs[i])))
+		attrPtr := &node.Attrs[i]
+		if !isNameSpaceAttr(attrPtr) {
+			node.Hash = crc32.Update(node.Hash, crc32c, []byte(attrName(attrPtr)))
+			node.Hash = crc32.Update(node.Hash, crc32c, []byte(attrValue(attrPtr)))
 		}
 	}
 

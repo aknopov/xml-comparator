@@ -47,15 +47,17 @@ func TestDifferentAttributes(t *testing.T) {
 	xmlSample1 := `<a attr1="12" attr2="xy"/>`
 	xmlSample2 := `<a attr2="xy"/>`
 	xmlSample3 := `<a attr1="12" attr2="ab"/>`
-	assert.Equal([]string{"Attributes count differ: 2 vs 1, path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
-	assert.Equal([]string{"Attributes differ: '[attr2=xy]' vs '[attr2=ab]', path='/a'"}, CompareXmlStrings(xmlSample1, xmlSample3, true))
+	assert.Equal([]string{"Attributes differ: counts 2 vs 1: attr1[0]:+1, path='/a'"},
+		CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Attributes differ: 'attr2=xy' vs 'attr2=ab', path='/a'"},
+		CompareXmlStrings(xmlSample1, xmlSample3, true))
 
 	xmlSample4 := `<X:a xmlns:X="space1"><b foo=""/><c/></X:a>`
 	xmlSample5 := `<a xmlns="space2"><b foo="bar"/><c/></a>`
 	diffs := CompareXmlStrings(xmlSample4, xmlSample5, false)
 	assert.Equal(2, len(diffs))
 	assert.Equal("Node namespaces differ: 'space1' vs 'space2', path='/a'", diffs[0])
-	assert.Equal("Attributes differ: '[foo=]' vs '[foo=bar]', path='/a/b[0]'", diffs[1])
+	assert.Equal("Attributes differ: 'foo=' vs 'foo=bar', path='/a/b[0]'", diffs[1])
 }
 
 func TestEqualWithDifferentAttributesOrder(t *testing.T) {
@@ -189,8 +191,8 @@ func TestDifferentChildren(t *testing.T) {
 
 	xmlSample1 := `<a><b><c/><c/><d/></b></a>`
 	xmlSample2 := `<a><b><d/><e/><e/><e/></b></a>`
-	assert.Equal([]string{"Children differ: counts 3 vs 4 (diffs: c[0]:+2, e[1]:-3), path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
-	assert.Equal([]string{"Children differ: counts 4 vs 3 (diffs: e[1]:+3, c[0]:-2), path='/a/b'"}, CompareXmlStrings(xmlSample2, xmlSample1, false))
+	assert.Equal([]string{"Children differ: counts 3 vs 4: c[0]:+2, e[1]:-3, path='/a/b'"}, CompareXmlStrings(xmlSample1, xmlSample2, false))
+	assert.Equal([]string{"Children differ: counts 4 vs 3: e[1]:+3, c[0]:-2, path='/a/b'"}, CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 
 func TestDifferentChildren2(t *testing.T) {
@@ -199,9 +201,9 @@ func TestDifferentChildren2(t *testing.T) {
 	// Edits: DELETE 'c', MODIFY 'd', Add 'e'
 	xmlSample1 := `<a><b><c/><d>1</d></b></a>`
 	xmlSample2 := `<a><b><d>2</d><e/></b></a>`
-	assert.Equal([]string{"Children differ: counts 2 vs 2 (diffs: c[0]:+1, e[1]:-1), path='/a/b'", "Nodes text differ: '1' vs '2', path='/a/b/d[1]'"},
+	assert.Equal([]string{"Children differ: counts 2 vs 2: c[0]:+1, e[1]:-1, path='/a/b'", "Nodes text differ: '1' vs '2', path='/a/b/d[1]'"},
 		CompareXmlStrings(xmlSample1, xmlSample2, false))
-	assert.Equal([]string{"Children differ: counts 2 vs 2 (diffs: e[1]:+1, c[0]:-1), path='/a/b'", "Nodes text differ: '2' vs '1', path='/a/b/d[0]'"},
+	assert.Equal([]string{"Children differ: counts 2 vs 2: e[1]:+1, c[0]:-1, path='/a/b'", "Nodes text differ: '2' vs '1', path='/a/b/d[0]'"},
 		CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 

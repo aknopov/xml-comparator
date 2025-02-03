@@ -1,6 +1,7 @@
 package xmlcomparator
 
 import (
+	"encoding/xml"
 	"fmt"
 	"math"
 	"regexp"
@@ -18,10 +19,8 @@ const (
 
 var numberPattern = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$`)
 
-type keyValue struct {
-	key   string
-	value string
-}
+var hashComparator = func(x, y uint32) bool { return x < y }
+var attrComparator = func(x, y xml.Attr) bool { return attrName(&x) < attrName(&y) }
 
 // Compares two XML strings.
 //   - sample1 - first XML string
@@ -114,46 +113,53 @@ func areEqualNumbers(text1, text2 string) bool {
 }
 
 func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
-	if len(node1.Attrs) != len(node2.Attrs) {
-		diffRecorder.AddMessage("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path())
+	attrs1 := node1.extractAttributes()
+	attrs2 := node2.extractAttributes()
+	if slices.Equal(attrs1, attrs2) || slices.Equal(sorted(attrs1, attrComparator), sorted(attrs2, attrComparator)) {
 		return false
 	}
 
-	attrMap1 := extractAttributes(node1)
-	attrMap2 := extractAttributes(node2)
+	diffs := CompareSequences(attrs1, attrs2, func(a, b xml.Attr) bool { return a == b })
 
-	unique1 := make([]keyValue, 0)
-	unique2 := make([]keyValue, 0)
+	matchingdMap := createMatchingNodesMap(diffs, attrName)
 
-	for k, v1 := range attrMap1 {
-		v2, ok := attrMap2[k]
-		if !ok {
-			unique1 = append(unique1, keyValue{k, v1})
-		}
-		if v1 != v2 {
-			unique1 = append(unique1, keyValue{k, v1})
-			unique2 = append(unique2, keyValue{k, v2})
+	unmatchedDiffs := make([]Diff[xml.Attr], 0, len(diffs)/2)
+	for i := 0; i < len(diffs); i++ {
+		if !matchingdMap.ContainsValue(i) && !matchingdMap.ContainsKey(i) {
+			unmatchedDiffs = append(unmatchedDiffs, diffs[i])
 		}
 	}
 
-	if len(unique1) == 0 && len(unique2) == 0 {
-		return false
+	// Log first mismatched attributes
+	var sDiffs string
+	if len(unmatchedDiffs) > 0 {
+		sDiffs = fmt.Sprintf("counts %d vs %d: %s", len(attrs1), len(attrs2), extractNames(unmatchedDiffs, attrName))
+	}
+	it := matchingdMap.Iterator()
+	for it.HasNext() {
+		i, j := it.Next()
+		attr1 := &diffs[i].e
+		attr2 := &diffs[j].e
+		if len(sDiffs) != 0 {
+			sDiffs += ", "
+		}
+		sDiffs += fmt.Sprintf("'%s=%s' vs '%s=%s'", attrName(attr1), attr1.Value, attrName(attr2), attr2.Value)
 	}
 
-	diffRecorder.AddMessage("Attributes differ: '%v' vs '%v', path='%s'", keyValueToString(unique1),
-		keyValueToString(unique2), node1.Path())
+	diffRecorder.AddMessage("Attributes differ: %s, path='%s'", sDiffs, node1.Path())
+
 	return true
 }
 
-func keyValueToString(pairs []keyValue) string {
-	ret := "["
-	for i, p := range pairs {
-		ret += p.key + "=" + p.value
-		if i < len(pairs)-1 {
-			ret += ", "
+func (node *parseNode) extractAttributes() []xml.Attr {
+	attrs := make([]xml.Attr, 0, len(node.Attrs))
+	for i := range node.Attrs {
+		// Namesapce attributes are processed separately
+		if !isNameSpaceAttr(&node.Attrs[i]) {
+			attrs = append(attrs, node.Attrs[i])
 		}
 	}
-	return ret + "]"
+	return attrs
 }
 
 func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
@@ -166,8 +172,8 @@ func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRec
 
 	// Simple case - permutation of children
 	if len(hashes1) == len(hashes2) {
-		sortedHashes1 := sortedClone(hashes1, func(x, y uint32) bool { return x < y })
-		sortedHashes2 := sortedClone(hashes2, func(x, y uint32) bool { return x < y })
+		sortedHashes1 := sorted(hashes1, hashComparator)
+		sortedHashes2 := sorted(hashes2, hashComparator)
 		if slices.Equal(sortedHashes1, sortedHashes2) {
 			diffRecorder.AddMessage("Children order differ for %d nodes, path='%s'", len(hashes1), node1.Path())
 			// TODO Implement comparison and output of sorted children
@@ -190,7 +196,7 @@ func extractChildHashes(node *parseNode) []uint32 {
 }
 
 func compareMatchingChildren(node1 *parseNode, node2 *parseNode, diffs []Diff[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
-	matchingdMap := createMatchingNodesMap(diffs)
+	matchingdMap := createMatchingNodesMap(diffs, nodeName)
 
 	unmatchedDiffs := make([]Diff[parseNode], 0, len(diffs)/2)
 	for i := 0; i < len(diffs); i++ {
@@ -201,8 +207,8 @@ func compareMatchingChildren(node1 *parseNode, node2 *parseNode, diffs []Diff[pa
 
 	// Log first message for this node
 	if len(unmatchedDiffs) > 0 {
-		diffRecorder.AddMessage("Children differ: counts %d vs %d (diffs: %s), path='%s'", len(node1.Children), len(node2.Children),
-			extractNames(unmatchedDiffs), node1.Path())
+		diffRecorder.AddMessage("Children differ: counts %d vs %d: %s, path='%s'", len(node1.Children), len(node2.Children),
+			extractNames(unmatchedDiffs, nodeName), node1.Path())
 	}
 
 	// Recursion!
@@ -211,7 +217,7 @@ func compareMatchingChildren(node1 *parseNode, node2 *parseNode, diffs []Diff[pa
 
 // Matches nodes in diff list there were modified and can be further compared.
 // Matching diffs should have complementary edit operation (add/delete) and the same element name.
-func createMatchingNodesMap(diffs []Diff[parseNode]) *bimap.BiMap[int, int] {
+func createMatchingNodesMap[T any](diffs []Diff[T], namer func(*T) string) *bimap.BiMap[int, int] {
 	modifiedMap := bimap.NewBiMapEx[int, int](len(diffs) / 2)
 
 	for i := 0; i < len(diffs); i++ {
@@ -229,7 +235,7 @@ func createMatchingNodesMap(diffs []Diff[parseNode]) *bimap.BiMap[int, int] {
 				continue
 			}
 
-			if diffs[j].t == complementDiff && nodeName(&diffs[i].e) == nodeName(&diffs[j].e) {
+			if diffs[j].t == complementDiff && namer(&diffs[i].e) == namer(&diffs[j].e) {
 				modifiedMap.Put(i, j)
 				break
 			}
@@ -247,19 +253,19 @@ func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[parse
 	}
 }
 
-func extractNames(mismatchedDiffs []Diff[parseNode]) string {
+func extractNames[T any](mismatchedDiffs []Diff[T], namer func(*T) string) string {
 	names := make([]string, 0, len(mismatchedDiffs))
 
 	// First names from the first sample (deleted ones)
-	names = append(names, extractNamesByType(mismatchedDiffs, diffDelete, "+")...)
+	names = append(names, extractNamesByType(mismatchedDiffs, diffDelete, "+", namer)...)
 	// Then names from the second sample (added ones)
-	names = append(names, extractNamesByType(mismatchedDiffs, diffAdd, "-")...)
+	names = append(names, extractNamesByType(mismatchedDiffs, diffAdd, "-", namer)...)
 
 	return strings.Join(names, ", ")
 }
 
 // Extracts names with run-length "compression"
-func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, sign string) []string {
+func extractNamesByType[T any](mismatchedDiffs []Diff[T], diffType editType, sign string, namer func(*T) string) []string {
 	names := make([]string, 0)
 	var startIdx, dataIdx int
 	prevName := ""
@@ -268,7 +274,7 @@ func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, si
 		if mismatchedDiffs[i].t == diffType {
 			if prevName == "" {
 				dataIdx = mismatchedDiffs[i].aIdx
-				prevName = nodeName(&mismatchedDiffs[i].e)
+				prevName = namer(&mismatchedDiffs[i].e)
 				startIdx = i
 			}
 		} else {
@@ -285,18 +291,7 @@ func extractNamesByType(mismatchedDiffs []Diff[parseNode], diffType editType, si
 	return names
 }
 
-func extractAttributes(node *parseNode) map[string]string {
-	attrs := make(map[string]string, len(node.Attrs))
-	for i := range node.Attrs {
-		// Namesapce attributes are processed separately
-		if !isNameSpaceAttr(node.Attrs[i]) {
-			attrs[attrName(node.Attrs[i])] = node.Attrs[i].Value
-		}
-	}
-	return attrs
-}
-
-func sortedClone[T comparable](slice []T, isLess func(T, T) bool) []T {
+func sorted[T comparable](slice []T, isLess func(T, T) bool) []T {
 	ret := make([]T, len(slice))
 	copy(ret, slice)
 	sort.Slice(ret, func(i, j int) bool { return isLess(ret[i], ret[j]) })

@@ -9,6 +9,11 @@ type void struct{}
 
 var empty void
 
+type keyValue struct {
+	key   string
+	value string
+}
+
 // Discrepancy messages collected while walking the trees.
 type DiffRecorder struct {
 	ignoredDiscrepancies []*regexp.Regexp
