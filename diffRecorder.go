@@ -1,6 +1,9 @@
 package xmlcomparator
 
-import "regexp"
+import (
+	"fmt"
+	"regexp"
+)
 
 type void struct{}
 
@@ -27,7 +30,8 @@ func CreateDiffRecorder(ignoredDiscrepancies []string) *DiffRecorder {
 	}
 }
 
-func (recorder *DiffRecorder) AddMessage(msg string) {
+func (recorder *DiffRecorder) AddMessage(format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
 	for _, d := range recorder.ignoredDiscrepancies {
 		if d.MatchString(msg) {
 			return

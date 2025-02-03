@@ -13,10 +13,10 @@ func TestInvalidStrings(t *testing.T) {
 
 	xmlSample := "<a><b/><c/></a>"
 
-	assert.Equal([]string{"Can't parse first sample: EOF"}, CompareXmlStrings("", "", false))
-	assert.Equal([]string{"Can't parse first sample: EOF"}, CompareXmlStrings("not an XML", xmlSample, false))
-	assert.Equal([]string{"Can't parse second sample: EOF"}, CompareXmlStrings(xmlSample, "", false))
-	assert.Equal([]string{"Can't parse second sample: EOF"}, CompareXmlStrings(xmlSample, "not an XML", false))
+	assert.Equal([]string{"Can't parse the first sample: EOF"}, CompareXmlStrings("", "", false))
+	assert.Equal([]string{"Can't parse the first sample: EOF"}, CompareXmlStrings("not an XML", xmlSample, false))
+	assert.Equal([]string{"Can't parse the second sample: EOF"}, CompareXmlStrings(xmlSample, "", false))
+	assert.Equal([]string{"Can't parse the second sample: EOF"}, CompareXmlStrings(xmlSample, "not an XML", false))
 }
 
 func TestDifferentNames(t *testing.T) {

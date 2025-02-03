@@ -76,7 +76,7 @@ func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Node names differ: '%s' vs '%s', path='%s'", name1, name2, node1.Path()))
+	diffRecorder.AddMessage("Node names differ: '%s' vs '%s', path='%s'", name1, name2, node1.Path())
 	return true
 }
 
@@ -88,7 +88,7 @@ func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffR
 	}
 
 	if diffRecorder.AreNamespacesNew(space1, space2) {
-		diffRecorder.AddMessage(fmt.Sprintf("Node namespaces differ: '%s' vs '%s', path='%s'", space1, space2, node1.Path()))
+		diffRecorder.AddMessage("Node namespaces differ: '%s' vs '%s', path='%s'", space1, space2, node1.Path())
 	}
 	return true
 }
@@ -100,7 +100,7 @@ func nodesTextDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Nodes text differ: '%s' vs '%s', path='%s'", ownText1, ownText2, node1.Path()))
+	diffRecorder.AddMessage("Nodes text differ: '%s' vs '%s', path='%s'", ownText1, ownText2, node1.Path())
 	return true
 }
 
@@ -115,7 +115,7 @@ func areEqualNumbers(text1, text2 string) bool {
 
 func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
 	if len(node1.Attrs) != len(node2.Attrs) {
-		diffRecorder.AddMessage(fmt.Sprintf("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path()))
+		diffRecorder.AddMessage("Attributes count differ: %d vs %d, path='%s'", len(node1.Attrs), len(node2.Attrs), node1.Path())
 		return false
 	}
 
@@ -140,8 +140,8 @@ func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffR
 		return false
 	}
 
-	diffRecorder.AddMessage(fmt.Sprintf("Attributes differ: '%v' vs '%v', path='%s'", keyValueToString(unique1),
-		keyValueToString(unique2), node1.Path()))
+	diffRecorder.AddMessage("Attributes differ: '%v' vs '%v', path='%s'", keyValueToString(unique1),
+		keyValueToString(unique2), node1.Path())
 	return true
 }
 
@@ -169,7 +169,7 @@ func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRec
 		sortedHashes1 := sortedClone(hashes1, func(x, y uint32) bool { return x < y })
 		sortedHashes2 := sortedClone(hashes2, func(x, y uint32) bool { return x < y })
 		if slices.Equal(sortedHashes1, sortedHashes2) {
-			diffRecorder.AddMessage(fmt.Sprintf("Children order differ for %d nodes, path='%s'", len(hashes1), node1.Path()))
+			diffRecorder.AddMessage("Children order differ for %d nodes, path='%s'", len(hashes1), node1.Path())
 			// TODO Implement comparison and output of sorted children
 			return true
 		}
@@ -201,9 +201,8 @@ func compareMatchingChildren(node1 *parseNode, node2 *parseNode, diffs []Diff[pa
 
 	// Log first message for this node
 	if len(unmatchedDiffs) > 0 {
-		diffRecorder.AddMessage(
-			fmt.Sprintf("Children differ: counts %d vs %d (diffs: %s), path='%s'", len(node1.Children), len(node2.Children),
-				extractNames(unmatchedDiffs), node1.Path()))
+		diffRecorder.AddMessage("Children differ: counts %d vs %d (diffs: %s), path='%s'", len(node1.Children), len(node2.Children),
+			extractNames(unmatchedDiffs), node1.Path())
 	}
 
 	// Recursion!
