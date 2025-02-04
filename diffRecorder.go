@@ -13,42 +13,55 @@ type keyValue struct {
 	value string
 }
 
-// Discrepancy messages collected while walking the trees.
-type DiffRecorder struct {
-	// List of ignored discrepances as text
-	IgnoredDiscrepancies []*regexp.Regexp
+// Provides diocreapncies while walking the trees in raw and string formats.
+type DiffRecorder interface {
 	// List of differences
-	Diffs []XmlDiff
+	GetDiffs() []XmlDiff
 	// List of serialized differences
-	Messages   []string
-	namespaces map[keyValue]void
+	GetMessages() []string
+}
+
+// Discrepancy messages collected while walking the trees.
+type diffRecorder struct {
+	ignoredDiscrepancies []*regexp.Regexp
+	diffs                []XmlDiff
+	messages             []string
+	namespaces           map[keyValue]void
+}
+
+func (recorder diffRecorder) GetDiffs() []XmlDiff {
+	return recorder.diffs
+}
+
+func (recorder diffRecorder) GetMessages() []string {
+	return recorder.messages
 }
 
 // Creates an instance of DiffRecorder.
-func createDiffRecorder(ignoredDiscrepancies []string) *DiffRecorder {
+func createDiffRecorder(ignoredDiscrepancies []string) *diffRecorder {
 	regexes := make([]*regexp.Regexp, len(ignoredDiscrepancies))
 	for i := range ignoredDiscrepancies {
 		regexes[i] = regexp.MustCompile(ignoredDiscrepancies[i])
 	}
 
-	return &DiffRecorder{
-		IgnoredDiscrepancies: regexes,
-		Diffs:                make([]XmlDiff, 0),
-		Messages:             make([]string, 0),
+	return &diffRecorder{
+		ignoredDiscrepancies: regexes,
+		diffs:                make([]XmlDiff, 0),
+		messages:             make([]string, 0),
 		namespaces:           make(map[keyValue]void),
 	}
 }
 
-func (recorder *DiffRecorder) addDiff(diff XmlDiff) {
+func (recorder *diffRecorder) addDiff(diff XmlDiff) {
 	msg := diff.DescribeDiff()
 	if len(msg) != 0 && !recorder.isIgnored(msg) {
-		recorder.Diffs = append(recorder.Diffs, diff)
-		recorder.Messages = append(recorder.Messages, msg)
+		recorder.diffs = append(recorder.diffs, diff)
+		recorder.messages = append(recorder.messages, msg)
 	}
 }
 
-func (recorder *DiffRecorder) isIgnored(msg string) bool {
-	for _, d := range recorder.IgnoredDiscrepancies {
+func (recorder *diffRecorder) isIgnored(msg string) bool {
+	for _, d := range recorder.ignoredDiscrepancies {
 		if d.MatchString(msg) {
 			return true
 		}
@@ -56,7 +69,7 @@ func (recorder *DiffRecorder) isIgnored(msg string) bool {
 	return false
 }
 
-func (recorder *DiffRecorder) areNamespacesNew(space1 string, space2 string) bool {
+func (recorder *diffRecorder) areNamespacesNew(space1 string, space2 string) bool {
 	aPair := keyValue{space1, space2}
 	if _, ok := recorder.namespaces[aPair]; ok {
 		return false

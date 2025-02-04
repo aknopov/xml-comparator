@@ -31,7 +31,7 @@ func TestKnownMessagesFiltering(t *testing.T) {
 	recorder.addDiff(testDiff{"footer"})
 	recorder.addDiff(testDiff{" footer2"})
 
-	assertT.Equal([]string{"header", "body", " footer2"}, recorder.Messages)
+	assertT.Equal([]string{"header", "body", " footer2"}, recorder.messages)
 }
 
 func TestAreNamespacesNew(t *testing.T) {
@@ -50,10 +50,10 @@ func TestAccessToDetails(t *testing.T) {
 	recorder.addDiff(testDiff{"header"})
 	recorder.addDiff(testDiff{"body"})
 
-	assertT.Equal(2, len(recorder.Diffs))
-	diff := recorder.Diffs[0]
+	assertT.Equal(2, len(recorder.diffs))
+	diff := recorder.diffs[0]
 	assertT.Equal("header", diff.DescribeDiff())
 	assertT.Equal("/a/b", diff.XmlPath())
-	diff = recorder.Diffs[1]
+	diff = recorder.diffs[1]
 	assertT.Equal("/a/b", diff.XmlPath())
 }

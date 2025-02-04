@@ -211,17 +211,15 @@ func TestComputeDifferences(t *testing.T) {
 	assertT := assert.New(t)
 
 	recorder := ComputeDifferences(xmlString1, xmlMixed, false, []string{})
-	assertT.Equal(3, len(recorder.Diffs))
-	diff1 := recorder.Diffs[0]
-	diff2 := recorder.Diffs[1]
-	diff3 := recorder.Diffs[2]
+	diffs := recorder.GetDiffs()
+	assertT.Equal(3, len(diffs))
 
-	assertT.Equal(DiffContent, diff1.GetType())
-	assertT.Equal("Node texts differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'", diff1.DescribeDiff())
-	assertT.Equal(DiffContent, diff2.GetType())
-	assertT.Equal("Node texts differ: 'Tove' vs 'Jani', path='/note/to[0]'", diff2.DescribeDiff())
-	assertT.Equal(DiffContent, diff3.GetType())
-	assertT.Equal("Node texts differ: 'Jani' vs 'Tove', path='/note/from[1]'", diff3.DescribeDiff())
+	assertT.Equal(DiffContent, diffs[0].GetType())
+	assertT.Equal("Node texts differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'", diffs[0].DescribeDiff())
+	assertT.Equal(DiffContent, diffs[1].GetType())
+	assertT.Equal("Node texts differ: 'Tove' vs 'Jani', path='/note/to[0]'", diffs[1].DescribeDiff())
+	assertT.Equal(DiffContent, diffs[2].GetType())
+	assertT.Equal("Node texts differ: 'Jani' vs 'Tove', path='/note/from[1]'", diffs[2].DescribeDiff())
 }
 
 func TestAreEqualNumbers(t *testing.T) {

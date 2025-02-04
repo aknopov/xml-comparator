@@ -41,7 +41,7 @@ func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []strin
 // Returns:
 // A list of detected discrepancies as strings
 func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
-	return ComputeDifferences(sample1, sample2, stopOnFirst, ignoredDiscrepancies).Messages
+	return ComputeDifferences(sample1, sample2, stopOnFirst, ignoredDiscrepancies).GetMessages()
 }
 
 // Compares two XML strings.
@@ -52,7 +52,7 @@ func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignor
 //
 // Returns:
 // A list of detected discrepancies
-func ComputeDifferences(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) *DiffRecorder {
+func ComputeDifferences(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) DiffRecorder {
 	diffRecorder := createDiffRecorder(ignoredDiscrepancies)
 
 	root1, err := parseXML(sample1)
@@ -72,7 +72,7 @@ func ComputeDifferences(sample1 string, sample2 string, stopOnFirst bool, ignore
 	return diffRecorder
 }
 
-func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) {
+func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder, stopOnFirst bool) {
 	switch {
 	case nodeNamesDifferent(node1, node2, diffRecorder) && stopOnFirst:
 		return
@@ -87,7 +87,7 @@ func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecord
 	}
 }
 
-func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
+func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder) bool {
 	name1 := nodeName(node1)
 	name2 := nodeName(node2)
 	if name1 == name2 {
@@ -98,7 +98,7 @@ func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 	return true
 }
 
-func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
+func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder) bool {
 	space1 := nodeSpace(node1)
 	space2 := nodeSpace(node2)
 	if space1 == space2 || space1 == "" || space2 == "" {
@@ -110,7 +110,7 @@ func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffR
 	}
 	return true
 }
-func nodesTextDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
+func nodesTextDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder) bool {
 	ownText1 := strings.TrimSpace(node1.CharData)
 
 	ownText2 := strings.TrimSpace(node2.CharData)
@@ -131,7 +131,7 @@ func areEqualNumbers(text1, text2 string) bool {
 	return false
 }
 
-func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder) bool {
+func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder) bool {
 	attrs1 := node1.extractAttributes()
 	attrs2 := node2.extractAttributes()
 	if slices.Equal(attrs1, attrs2) || slices.Equal(sorted(attrs1, attrComparator), sorted(attrs2, attrComparator)) {
@@ -155,7 +155,7 @@ func (node *parseNode) extractAttributes() []xml.Attr {
 	return attrs
 }
 
-func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) bool {
+func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *diffRecorder, stopOnFirst bool) bool {
 	// Simple case - identical children by hash
 	hashes1 := extractChildHashes(node1)
 	hashes2 := extractChildHashes(node2)
@@ -193,7 +193,7 @@ func extractChildHashes(node *parseNode) []uint32 {
 	return hashes
 }
 
-func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []diffT[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []diffT[parseNode], diffRecorder *diffRecorder, stopOnFirst bool) {
 	it := matchingMap.Iterator()
 	for it.HasNext() {
 		i, j := it.Next()

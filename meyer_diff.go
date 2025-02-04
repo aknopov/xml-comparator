@@ -67,6 +67,7 @@ type algData[T any] struct {
 //	equals - A comparison function that checks equality of its arguments.
 //
 // Returns:
+//
 //	A slice of Diff[T] representing the differences between the two sequences.
 func compareSequences[T any](a, b []T, equals func(x, y T) bool) []diffT[T] {
 	return compareSequencesEx(a, b, equals, false, defaultMaxDiffs)
@@ -88,6 +89,7 @@ func compareSequences[T any](a, b []T, equals func(x, y T) bool) []diffT[T] {
 //   - maxDiffs - The maximum number of edit graphs to analyse.
 //
 // Returns:
+//
 //	A slice of Diff[T] representing the differences between the two sequences.
 func compareSequencesEx[T any](a, b []T, equals func(x, y T) bool, recordEquals bool, maxDiffs int) []diffT[T] {
 	diff := create(a, b, equals)
