@@ -15,10 +15,13 @@ type keyValue struct {
 
 // Discrepancy messages collected while walking the trees.
 type DiffRecorder struct {
+	// List of ignored discrepances as text
 	IgnoredDiscrepancies []*regexp.Regexp
-	Diffs                []XmlDiff
-	Messages             []string
-	namespaces           map[keyValue]void
+	// List of differences
+	Diffs []XmlDiff
+	// List of serialized differences
+	Messages   []string
+	namespaces map[keyValue]void
 }
 
 // Creates an instance of DiffRecorder.

@@ -25,8 +25,9 @@ var attrComparator = func(x, y xml.Attr) bool { return attrName(&x) < attrName(&
 //   - sample1 - first XML string
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
+//
 // Returns:
-// A list of detected discrepancies
+// A list of detected discrepancies as strings
 func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []string {
 	return CompareXmlStringsEx(sample1, sample2, stopOnFirst, []string{})
 }
@@ -36,24 +37,39 @@ func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []strin
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
 //   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
+//
+// Returns:
+// A list of detected discrepancies as strings
+func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
+	return ComputeDifferences(sample1, sample2, stopOnFirst, ignoredDiscrepancies).Messages
+}
+
+// Compares two XML strings.
+//   - sample1 - first XML string
+//   - sample2 - second XML string
+//   - stopOnFirst - stop comparison on the first difference
+//   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
+//
 // Returns:
 // A list of detected discrepancies
-func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
+func ComputeDifferences(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) *DiffRecorder {
+	diffRecorder := createDiffRecorder(ignoredDiscrepancies)
+
 	root1, err := parseXML(sample1)
 	if root1 == nil || err != nil {
-		return []string{"Can't parse the first sample: " + err.Error()}
+		diffRecorder.addDiff(parserError{text: "Can't parse the first sample: " + err.Error()})
+		return diffRecorder
 	}
 
 	root2, err := parseXML(sample2)
 	if root2 == nil || err != nil {
-		return []string{"Can't parse the second sample: " + err.Error()}
+		diffRecorder.addDiff(parserError{text: "Can't parse the second sample: " + err.Error()})
+		return diffRecorder
 	}
-
-	diffRecorder := createDiffRecorder(ignoredDiscrepancies)
 
 	nodesDifferent(root1, root2, diffRecorder, stopOnFirst)
 
-	return diffRecorder.Messages
+	return diffRecorder
 }
 
 func nodesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRecorder, stopOnFirst bool) {
@@ -162,7 +178,7 @@ func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRec
 
 	diffRecorder.addDiff(createChildrenDiff(diffs, len(node1.Children), len(node2.Children), node1.path()))
 
-	matchingdMap := createMatchingElementsMap(diffs, nodeName) // UC
+	matchingdMap := createMatchingElementsMap(diffs, nodeName)
 	// Recursion!
 	iterateMatchingNodes(matchingdMap, diffs, diffRecorder, stopOnFirst)
 

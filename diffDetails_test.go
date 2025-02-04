@@ -26,6 +26,9 @@ func TestCreators(t *testing.T) {
 func TestDescribeDiff(t *testing.T) {
 	assertT := assert.New(t)
 
+	parseError := parserError{"some error"}
+	assertT.Equal("some error", parseError.DescribeDiff())
+
 	textDiff := createTextDiff(DiffName, "a", "b", "/")
 	assertT.Equal("Node names differ: 'a' vs 'b', path='/'", textDiff.DescribeDiff())
 
@@ -48,6 +51,7 @@ func TestGetType(t *testing.T) {
 		diff  XmlDiff
 		dType DiffType
 	}{
+		{&parserError{"some error"}, ParseError},
 		{createTextDiff(DiffName, "a", "b", "/"), DiffName},
 		{createTextDiff(DiffSpace, "a", "b", "/"), DiffSpace},
 		{createTextDiff(DiffContent, "a", "b", "/"), DiffContent},

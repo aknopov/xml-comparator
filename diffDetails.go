@@ -17,6 +17,7 @@ const (
 	DiffAttributes
 	DiffChildren
 	DiffChildrenOrder
+	ParseError
 )
 
 type XmlDiff interface {
@@ -24,11 +25,15 @@ type XmlDiff interface {
 	GetType() DiffType
 }
 
+type parserError struct {
+	text string
+}
+
 type textualDiff struct {
-	diffType    DiffType
-	text1   string
-	text2   string
-	xmlPath string
+	diffType DiffType
+	text1    string
+	text2    string
+	xmlPath  string
 }
 
 type attributeDiff struct {
@@ -48,6 +53,16 @@ type childrenDiff struct {
 	len1    int
 	len2    int
 	xmlPath string
+}
+
+// ------------
+
+func (err parserError) DescribeDiff() string {
+	return err.text
+}
+
+func (err parserError) GetType() DiffType {
+	return ParseError
 }
 
 // ------------
