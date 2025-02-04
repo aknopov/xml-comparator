@@ -26,16 +26,16 @@ func TestXmlPathString(t *testing.T) {
 
 	root, _ := parseXML(xmlString2)
 
-	assertT.Equal("/root", root.Path())
-	assertT.Equal("/root/animal[0]", root.Children[0].Path())
-	assertT.Equal("/root/animal[0]/p[0]", root.Children[0].Children[0].Path())
-	assertT.Equal("/root/animal[0]/dog[1]", root.Children[0].Children[1].Path())
-	assertT.Equal("/root/animal[0]/dog[1]/p", root.Children[0].Children[1].Children[0].Path())
-	assertT.Equal("/root/birds[1]", root.Children[1].Path())
-	assertT.Equal("/root/birds[1]/p[0]", root.Children[1].Children[0].Path())
-	assertT.Equal("/root/birds[1]/p[1]", root.Children[1].Children[1].Path())
-	assertT.Equal("/root/animal[2]", root.Children[2].Path())
-	assertT.Equal("/root/animal[2]/p", root.Children[2].Children[0].Path())
+	assertT.Equal("/root", root.path())
+	assertT.Equal("/root/animal[0]", root.Children[0].path())
+	assertT.Equal("/root/animal[0]/p[0]", root.Children[0].Children[0].path())
+	assertT.Equal("/root/animal[0]/dog[1]", root.Children[0].Children[1].path())
+	assertT.Equal("/root/animal[0]/dog[1]/p", root.Children[0].Children[1].Children[0].path())
+	assertT.Equal("/root/birds[1]", root.Children[1].path())
+	assertT.Equal("/root/birds[1]/p[0]", root.Children[1].Children[0].path())
+	assertT.Equal("/root/birds[1]/p[1]", root.Children[1].Children[1].path())
+	assertT.Equal("/root/animal[2]", root.Children[2].path())
+	assertT.Equal("/root/animal[2]/p", root.Children[2].Children[0].path())
 }
 
 func TestStringerInterface(t *testing.T) {

@@ -25,6 +25,8 @@ var attrComparator = func(x, y xml.Attr) bool { return attrName(&x) < attrName(&
 //   - sample1 - first XML string
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
+// Returns:
+// A list of detected discrepancies
 func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []string {
 	return CompareXmlStringsEx(sample1, sample2, stopOnFirst, []string{})
 }
@@ -34,6 +36,8 @@ func CompareXmlStrings(sample1 string, sample2 string, stopOnFirst bool) []strin
 //   - sample2 - second XML string
 //   - stopOnFirst - stop comparison on the first difference
 //   - ignoredDiscrepancies - list of regular expressions for ignored discrepancies
+// Returns:
+// A list of detected discrepancies
 func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignoredDiscrepancies []string) []string {
 	root1, err := parseXML(sample1)
 	if root1 == nil || err != nil {
@@ -45,7 +49,7 @@ func CompareXmlStringsEx(sample1 string, sample2 string, stopOnFirst bool, ignor
 		return []string{"Can't parse the second sample: " + err.Error()}
 	}
 
-	diffRecorder := CreateDiffRecorder(ignoredDiscrepancies)
+	diffRecorder := createDiffRecorder(ignoredDiscrepancies)
 
 	nodesDifferent(root1, root2, diffRecorder, stopOnFirst)
 
@@ -74,7 +78,7 @@ func nodeNamesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 		return false
 	}
 
-	diffRecorder.AddDiff(createTextDiff(DiffName, name1, name2, node1.Path()))
+	diffRecorder.addDiff(createTextDiff(DiffName, name1, name2, node1.path()))
 	return true
 }
 
@@ -85,8 +89,8 @@ func nodeSpacesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffR
 		return false
 	}
 
-	if diffRecorder.AreNamespacesNew(space1, space2) {
-		diffRecorder.AddDiff(createTextDiff(DiffSpace, space1, space2, node1.Path()))
+	if diffRecorder.areNamespacesNew(space1, space2) {
+		diffRecorder.addDiff(createTextDiff(DiffSpace, space1, space2, node1.path()))
 	}
 	return true
 }
@@ -98,7 +102,7 @@ func nodesTextDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRe
 		return false
 	}
 
-	diffRecorder.AddDiff(createTextDiff(DiffContent, ownText1, ownText2, node1.Path()))
+	diffRecorder.addDiff(createTextDiff(DiffContent, ownText1, ownText2, node1.path()))
 	return true
 }
 
@@ -118,8 +122,8 @@ func attributesDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffR
 		return false
 	}
 
-	diffs := CompareSequences(attrs1, attrs2, func(a, b xml.Attr) bool { return a == b })
-	diffRecorder.AddDiff(createAttributeDiff(diffs, len(attrs1), len(attrs2), node1.Path()))
+	diffs := compareSequences(attrs1, attrs2, func(a, b xml.Attr) bool { return a == b })
+	diffRecorder.addDiff(createAttributeDiff(diffs, len(attrs1), len(attrs2), node1.path()))
 
 	return true
 }
@@ -148,15 +152,15 @@ func childrenDifferent(node1 *parseNode, node2 *parseNode, diffRecorder *DiffRec
 		sortedHashes1 := sorted(hashes1, hashComparator)
 		sortedHashes2 := sorted(hashes2, hashComparator)
 		if slices.Equal(sortedHashes1, sortedHashes2) {
-			diffRecorder.AddDiff(createOrderDiff(len(hashes1), node1.Path()))
+			diffRecorder.addDiff(createOrderDiff(len(hashes1), node1.path()))
 			// TODO Implement comparison and output of sorted children
 			return true
 		}
 	}
 
-	diffs := CompareSequences(node1.Children, node2.Children, func(a, b parseNode) bool { return a.Hash == b.Hash })
+	diffs := compareSequences(node1.Children, node2.Children, func(a, b parseNode) bool { return a.Hash == b.Hash })
 
-	diffRecorder.AddDiff(createChildrenDiff(diffs, len(node1.Children), len(node2.Children), node1.Path()))
+	diffRecorder.addDiff(createChildrenDiff(diffs, len(node1.Children), len(node2.Children), node1.path()))
 
 	matchingdMap := createMatchingElementsMap(diffs, nodeName) // UC
 	// Recursion!
@@ -173,7 +177,7 @@ func extractChildHashes(node *parseNode) []uint32 {
 	return hashes
 }
 
-func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []Diff[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
+func iterateMatchingNodes(matchingMap *bimap.BiMap[int, int], diffs []diffT[parseNode], diffRecorder *DiffRecorder, stopOnFirst bool) {
 	it := matchingMap.Iterator()
 	for it.HasNext() {
 		i, j := it.Next()

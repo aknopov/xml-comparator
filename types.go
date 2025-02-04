@@ -8,10 +8,10 @@ import (
 
 // Creates a string representation of the XML path to the node.
 //
-// Path elements are node names separated by slashes.
+// path elements are node names separated by slashes.
 //
 // Child element might have its index, unless it is the only child - handy for dealing with arrays.
-func (node *parseNode) Path() string {
+func (node *parseNode) path() string {
 	path := make([]string, 0)
 	currNode := node
 

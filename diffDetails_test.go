@@ -11,16 +11,16 @@ func TestCreators(t *testing.T) {
 	assertT := assert.New(t)
 
 	textDiff := createTextDiff(DiffName, "a", "b", "/")
-	assertT.IsType(&TextualDiff{}, textDiff)
+	assertT.IsType(&textualDiff{}, textDiff)
 
-	attribDiff := createAttributeDiff([]Diff[xml.Attr]{}, 0, 0, "/")
-	assertT.IsType(&AttributeDiff{}, attribDiff)
+	attribDiff := createAttributeDiff([]diffT[xml.Attr]{}, 0, 0, "/")
+	assertT.IsType(&attributeDiff{}, attribDiff)
 
-	orderDiff := createOrderDiff(0, "/")
-	assertT.IsType(&OrderDiff{}, orderDiff)
+	ordrDiff := createOrderDiff(0, "/")
+	assertT.IsType(&orderDiff{}, ordrDiff)
 
-	childrenDiff := createChildrenDiff([]Diff[parseNode]{}, 0, 0, "/")
-	assertT.IsType(&ChildrenDiff{}, childrenDiff)
+	childDiff := createChildrenDiff([]diffT[parseNode]{}, 0, 0, "/")
+	assertT.IsType(&childrenDiff{}, childDiff)
 }
 
 func TestDescribeDiff(t *testing.T) {
@@ -29,16 +29,16 @@ func TestDescribeDiff(t *testing.T) {
 	textDiff := createTextDiff(DiffName, "a", "b", "/")
 	assertT.Equal("Node names differ: 'a' vs 'b', path='/'", textDiff.DescribeDiff())
 
-	diffs1 := []Diff[xml.Attr]{{e: xml.Attr{Name: xml.Name{Space: "spc", Local: "name"}, Value: "val"}, t: diffSame}}
+	diffs1 := []diffT[xml.Attr]{{e: xml.Attr{Name: xml.Name{Space: "spc", Local: "name"}, Value: "val"}, t: diffSame}}
 	attribDiff := createAttributeDiff(diffs1, 0, 0, "/")
 	assertT.Equal("Attributes differ: counts 0 vs 0: , path='/'", attribDiff.DescribeDiff())
 
-	orderDiff := createOrderDiff(1, "/")
-	assertT.Equal("Children order differ for 1 nodes, path='/'", orderDiff.DescribeDiff())
+	ordrDiff := createOrderDiff(1, "/")
+	assertT.Equal("Children order differ for 1 nodes, path='/'", ordrDiff.DescribeDiff())
 
-	diffs2 := []Diff[parseNode]{{e: parseNode{XMLName: xml.Name{Space: "spc", Local: "name"}}, t: diffSame}}
-	childrenDiff := createChildrenDiff(diffs2, 0, 0, "/")
-	assertT.Equal("Children differ: counts 0 vs 0: , path='/'", childrenDiff.DescribeDiff())
+	diffs2 := []diffT[parseNode]{{e: parseNode{XMLName: xml.Name{Space: "spc", Local: "name"}}, t: diffSame}}
+	childDiff := createChildrenDiff(diffs2, 0, 0, "/")
+	assertT.Equal("Children differ: counts 0 vs 0: , path='/'", childDiff.DescribeDiff())
 }
 
 func TestGetType(t *testing.T) {
@@ -51,9 +51,9 @@ func TestGetType(t *testing.T) {
 		{createTextDiff(DiffName, "a", "b", "/"), DiffName},
 		{createTextDiff(DiffSpace, "a", "b", "/"), DiffSpace},
 		{createTextDiff(DiffContent, "a", "b", "/"), DiffContent},
-		{createAttributeDiff(make([]Diff[xml.Attr], 0), 0, 0, "/"), DiffAttributes},
+		{createAttributeDiff(make([]diffT[xml.Attr], 0), 0, 0, "/"), DiffAttributes},
 		{createOrderDiff(0, "/"), DiffChildrenOrder},
-		{createChildrenDiff(make([]Diff[parseNode], 0), 0, 0, "/"), DiffChildren},
+		{createChildrenDiff(make([]diffT[parseNode], 0), 0, 0, "/"), DiffChildren},
 	}
 
 	for _, tt := range tests {

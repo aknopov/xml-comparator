@@ -21,11 +21,11 @@ func (diff testDiff) GetType() DiffType {
 func TestKnownMessagesFiltering(t *testing.T) {
 	assertT := assert.New(t)
 
-	recorder := CreateDiffRecorder([]string{"^footer.*$"})
-	recorder.AddDiff(testDiff{"header"})
-	recorder.AddDiff(testDiff{"body"})
-	recorder.AddDiff(testDiff{"footer"})
-	recorder.AddDiff(testDiff{" footer2"})
+	recorder := createDiffRecorder([]string{"^footer.*$"})
+	recorder.addDiff(testDiff{"header"})
+	recorder.addDiff(testDiff{"body"})
+	recorder.addDiff(testDiff{"footer"})
+	recorder.addDiff(testDiff{" footer2"})
 
 	assertT.Equal([]string{"header", "body", " footer2"}, recorder.Messages)
 }
@@ -33,18 +33,18 @@ func TestKnownMessagesFiltering(t *testing.T) {
 func TestAreNamespacesNew(t *testing.T) {
 	assertT := assert.New(t)
 
-	recorder := CreateDiffRecorder([]string{"^footer.*$"})
+	recorder := createDiffRecorder([]string{"^footer.*$"})
 
-	assertT.True(recorder.AreNamespacesNew("space1", "space2"))
-	assertT.False(recorder.AreNamespacesNew("space1", "space2"))
+	assertT.True(recorder.areNamespacesNew("space1", "space2"))
+	assertT.False(recorder.areNamespacesNew("space1", "space2"))
 }
 
 func TestAccessToDetails(t *testing.T) {
 	assertT := assert.New(t)
 
-	recorder := CreateDiffRecorder([]string{})
-	recorder.AddDiff(testDiff{"header"})
-	recorder.AddDiff(testDiff{"body"})
+	recorder := createDiffRecorder([]string{})
+	recorder.addDiff(testDiff{"header"})
+	recorder.addDiff(testDiff{"body"})
 
 	assertT.Equal(2, len(recorder.Diffs))
 	diff := recorder.Diffs[0]
