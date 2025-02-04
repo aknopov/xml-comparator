@@ -71,7 +71,7 @@ func TestEqualWithDifferentAttributesOrder(t *testing.T) {
 func TestDifferentCharData(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Equal([]string{"Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'"},
+	assert.Equal([]string{"Node texts differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'"},
 		CompareXmlStrings(xmlString1, xmlMixed, true))
 }
 
@@ -97,24 +97,24 @@ func TestStoppingOnTheFirstError(t *testing.T) {
 
 	diffs1 := CompareXmlStrings(xmlString1, xmlMixed, true)
 	assert.Equal(1, len(diffs1))
-	assert.Equal("Nodes text differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'", diffs1[0])
+	assert.Equal("Node texts differ: '' vs 'Some text ...\n    \n\tmixed with elements', path='/note'", diffs1[0])
 
 	diffs2 := CompareXmlStrings(xmlString1, xmlMixed, false)
 	assert.Equal(3, len(diffs2))
 	assert.Equal(diffs1[0], diffs2[0])
-	assert.Equal("Nodes text differ: 'Tove' vs 'Jani', path='/note/to[0]'", diffs2[1])
-	assert.Equal("Nodes text differ: 'Jani' vs 'Tove', path='/note/from[1]'", diffs2[2])
+	assert.Equal("Node texts differ: 'Tove' vs 'Jani', path='/note/to[0]'", diffs2[1])
+	assert.Equal("Node texts differ: 'Jani' vs 'Tove', path='/note/from[1]'", diffs2[2])
 }
 
 func TestIgnoreList(t *testing.T) {
 	assert := assert.New(t)
 
-	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '.+' vs '.+'`})
+	diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Node texts differ: '.+' vs '.+'`})
 	assert.Equal(1, len(diffs))
 
 	xmlString5 := `<a>Node Content</a>`
 	xmlString6 := `<a>Another Content</a>`
-	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+', path='/a'`})
+	diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Node texts differ: '.+' vs '.+', path='/a'`})
 	assert.Equal(emptyList, diffs)
 }
 
@@ -201,9 +201,9 @@ func TestDifferentChildren2(t *testing.T) {
 	// Edits: DELETE 'c', MODIFY 'd', Add 'e'
 	xmlSample1 := `<a><b><c/><d>1</d></b></a>`
 	xmlSample2 := `<a><b><d>2</d><e/></b></a>`
-	assert.Equal([]string{"Children differ: counts 2 vs 2: c[0]:+1, e[1]:-1, path='/a/b'", "Nodes text differ: '1' vs '2', path='/a/b/d[1]'"},
+	assert.Equal([]string{"Children differ: counts 2 vs 2: c[0]:+1, e[1]:-1, path='/a/b'", "Node texts differ: '1' vs '2', path='/a/b/d[1]'"},
 		CompareXmlStrings(xmlSample1, xmlSample2, false))
-	assert.Equal([]string{"Children differ: counts 2 vs 2: e[1]:+1, c[0]:-1, path='/a/b'", "Nodes text differ: '2' vs '1', path='/a/b/d[0]'"},
+	assert.Equal([]string{"Children differ: counts 2 vs 2: e[1]:+1, c[0]:-1, path='/a/b'", "Node texts differ: '2' vs '1', path='/a/b/d[0]'"},
 		CompareXmlStrings(xmlSample2, xmlSample1, false))
 }
 

@@ -6,39 +6,6 @@ import (
 	"strings"
 )
 
-type DiffType int
-
-const (
-	DiffEqual DiffType = iota
-	DiffName
-	DiffSpace
-	DiffContent
-	DiffAttributes
-	DiffChildren
-	DiffChildrenOrder
-)
-
-// UC ? Abstract XML node presentation
-type Node struct {
-	XMLName  xml.Name
-	Attrs    []xml.Attr
-	Content  string
-	Children []Node
-	Parent   *Node
-	Idx      int
-}
-
-type DiffDetails interface {
-	DescribeDiff() string
-}
-
-type XmlDiff struct {
-	Path    string
-	Type    DiffType
-	Idx     int
-	Details *DiffDetails
-}
-
 // Creates a string representation of the XML path to the node.
 //
 // Path elements are node names separated by slashes.

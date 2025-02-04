@@ -1,7 +1,6 @@
 package xmlcomparator
 
 import (
-	"fmt"
 	"regexp"
 )
 
@@ -17,6 +16,7 @@ type keyValue struct {
 // Discrepancy messages collected while walking the trees.
 type DiffRecorder struct {
 	ignoredDiscrepancies []*regexp.Regexp
+	Diffs                []XmlDiff
 	Messages             []string
 	namespaces           map[keyValue]void
 }
@@ -30,19 +30,27 @@ func CreateDiffRecorder(ignoredDiscrepancies []string) *DiffRecorder {
 
 	return &DiffRecorder{
 		ignoredDiscrepancies: regexes,
+		Diffs:                make([]XmlDiff, 0),
 		Messages:             make([]string, 0),
 		namespaces:           make(map[keyValue]void),
 	}
 }
 
-func (recorder *DiffRecorder) AddMessage(format string, a ...any) {
-	msg := fmt.Sprintf(format, a...)
+func (recorder *DiffRecorder) AddDiff(diff XmlDiff) {
+	msg := diff.DescribeDiff()
+	if len(msg) != 0 && !recorder.isIgnored(msg) {
+		recorder.Diffs = append(recorder.Diffs, diff)
+		recorder.Messages = append(recorder.Messages, msg)
+	}
+}
+
+func (recorder *DiffRecorder) isIgnored(msg string) bool {
 	for _, d := range recorder.ignoredDiscrepancies {
 		if d.MatchString(msg) {
-			return
+			return true
 		}
 	}
-	recorder.Messages = append(recorder.Messages, msg)
+	return false
 }
 
 func (recorder *DiffRecorder) AreNamespacesNew(space1 string, space2 string) bool {

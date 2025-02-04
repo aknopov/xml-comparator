@@ -39,11 +39,11 @@ Example of usage in the code -
     xmlSample4 := `<a><b><d/><e/><e/><e/></b></a>`
     assert.Equal([]string{"Children differ: counts 3 vs 4: c[0]:+2, e[1]:-3, path='/a/b'"}, CompareXmlStrings(xmlSample3, xmlSample4, false))
 
-    diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Nodes text differ: '.+' vs '.+'`})
+    diffs := CompareXmlStringsEx(xmlString1, xmlMixed, false, []string{`Node texts differ: '.+' vs '.+'`})
     assert.Equal(1, len(diffs))
 
     xmlString5 := `<a>Node Content</a>`
     xmlString6 := `<a>Another Content</a>`
-    diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Nodes text differ: '.+' vs '.+'`})
+    diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Node textsNodes test differ: '.+' vs '.+'`})
     assert.Equal(0, len(diffs))
 ```
