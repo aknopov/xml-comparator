@@ -1,84 +1,23 @@
 package xmlcomparator
 
 import (
-	"bytes"
 	"encoding/xml"
-	"hash/crc32"
-	"sort"
 	"strconv"
 	"strings"
 )
 
-// Abstract XML node presentation
-type Node struct {
-	XMLName  xml.Name
-	Attrs    []xml.Attr `xml:"-"`
-	Content  []byte     `xml:",innerxml"`
-	CharData string     `xml:",chardata"`
-	Children []Node     `xml:",any"`
-	Parent   *Node      `xml:"-"`
-	Hash     uint32     `xml:"-"`
-}
-
-var crc32c = crc32.MakeTable(crc32.Castagnoli)
-
-// Walks breadth-first through the XML tree calling the function for iteslef and then for each child node
-//   - f - function to call for each node; should return `false` to stop traversiong
-func (node *Node) Walk(f func(*Node) bool) {
-	if !f(node) {
-		return
-	}
-
-	for i := range node.Children {
-		node.Children[i].Walk(f)
-	}
-}
-
-// Unmarshals XML data into a Node structure - "encoding/xml" package compatible
-func (n *Node) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	n.Attrs = start.Attr
-	type node Node
-
-	return d.DecodeElement((*node)(n), &start)
-}
-
-// Unmarshals XML string into a Node structure
-//   - xmlString - XML string to unmarshal
-//
-// Returns: root node of the XML tree and error if any
-func UnmarshalXML(xmlString string) (*Node, error) {
-	buf := bytes.NewBuffer([]byte(xmlString))
-	dec := xml.NewDecoder(buf)
-
-	var root Node
-	if err := dec.Decode(&root); err != nil {
-		return nil, err
-	}
-
-	root.Walk(func(n *Node) bool {
-		for i := range n.Children {
-			n.Children[i].Parent = n
-		}
-		return true
-	})
-
-	root.hashCode()
-
-	return &root, nil
-}
-
 // Creates a string representation of the XML path to the node.
 //
-// Path elements are node names separated by slashes.
+// path elements are node names separated by slashes.
 //
 // Child element might have its index, unless it is the only child - handy for dealing with arrays.
-func (node *Node) Path() string {
+func (node *parseNode) path() string {
 	path := make([]string, 0)
 	currNode := node
 
 	for currNode.Parent != nil {
 		siblings := currNode.Parent.Children
-		nodeName := currNode.Name()
+		nodeName := nodeName(currNode)
 		if len(siblings) == 1 {
 			path = append(path, "/"+nodeName)
 		} else {
@@ -91,7 +30,7 @@ func (node *Node) Path() string {
 		}
 		currNode = currNode.Parent
 	}
-	path = append(path, "/"+currNode.Name())
+	path = append(path, "/"+nodeName(currNode))
 
 	// Reverse the path
 	size := len(path)
@@ -103,16 +42,16 @@ func (node *Node) Path() string {
 }
 
 // Converts XML node to a string that includes node name and attribites.
-func (node *Node) String() string {
+func (node *parseNode) String() string {
 	attStr := ""
 	for i := range node.Attrs {
-		attStr += AttrName(node.Attrs[i]) + "=" + node.Attrs[i].Value
+		attStr += attrName(&node.Attrs[i]) + "=" + node.Attrs[i].Value
 		if i < len(node.Attrs)-1 {
 			attStr += ", "
 		}
 	}
 
-	ret := node.Name() + "[" + attStr + "]"
+	ret := nodeName(node) + "[" + attStr + "]"
 
 	if len(node.Children) == 0 {
 		ret += " = " + string(node.Content)
@@ -123,70 +62,25 @@ func (node *Node) String() string {
 
 // Convenience shortcut functions
 
-func (node *Node) Name() string {
+func nodeName(node *parseNode) string {
 	return node.XMLName.Local
 }
-
-func (node *Node) Space() string {
+func nodeSpace(node *parseNode) string {
 	return node.XMLName.Space
 }
 
-func AttrName(attr xml.Attr) string {
+func attrName(attr *xml.Attr) string {
 	return attr.Name.Local
 }
 
-func AttrSpace(attr xml.Attr) string {
+func attrSpace(attr *xml.Attr) string {
 	return attr.Name.Space
 }
 
-func AttrValue(attr xml.Attr) string {
+func attrValue(attr *xml.Attr) string {
 	return attr.Value
 }
 
-func extractAttributes(node *Node) map[string]string {
-	attrs := make(map[string]string, len(node.Attrs))
-	for i := range node.Attrs {
-		// Namesapce attributes are processed separately
-		if !isNameSpaceAttr(node.Attrs[i]) {
-			attrs[AttrName(node.Attrs[i])] = node.Attrs[i].Value
-		}
-	}
-	return attrs
-}
-
-func isNameSpaceAttr(attr xml.Attr) bool {
-	return AttrSpace(attr) == "xmlns" || AttrName(attr) == "xmlns"
-}
-
-func sortedClone[T comparable](slice []T, isLess func(T, T) bool) []T {
-	ret := make([]T, len(slice))
-	copy(ret, slice)
-	sort.Slice(ret, func(i, j int) bool { return isLess(ret[i], ret[j]) })
-	return ret
-}
-
-//------- hash code generation -------
-
-// Recursive function
-func (node *Node) hashCode() uint32 {
-	if node.Hash != 0 {
-		return node.Hash
-	}
-
-	node.Hash = crc32.Checksum([]byte(node.Name()), crc32c)
-	node.Hash = crc32.Update(node.Hash, crc32c, []byte(strings.TrimSpace(node.CharData)))
-
-	for i := range node.Attrs {
-		if !isNameSpaceAttr(node.Attrs[i]) {
-			node.Hash = crc32.Update(node.Hash, crc32c, []byte(AttrName(node.Attrs[i])))
-			node.Hash = crc32.Update(node.Hash, crc32c, []byte(AttrValue(node.Attrs[i])))
-		}
-	}
-
-	// Cheap and cheerful
-	for i := range node.Children {
-		node.Hash = 31*node.Hash + node.Children[i].hashCode()
-	}
-
-	return node.Hash
+func isNameSpaceAttr(attr *xml.Attr) bool {
+	return attrSpace(attr) == "xmlns" || attrName(attr) == "xmlns"
 }

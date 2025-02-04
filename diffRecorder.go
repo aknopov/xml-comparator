@@ -1,42 +1,75 @@
 package xmlcomparator
 
-import "regexp"
+import (
+	"regexp"
+)
 
 type void struct{}
 
 var empty void
 
+type keyValue struct {
+	key   string
+	value string
+}
+
+// Provides diocreapncies while walking the trees in raw and string formats.
+type DiffRecorder interface {
+	// List of differences
+	GetDiffs() []XmlDiff
+	// List of serialized differences
+	GetMessages() []string
+}
+
 // Discrepancy messages collected while walking the trees.
-type DiffRecorder struct {
+type diffRecorder struct {
 	ignoredDiscrepancies []*regexp.Regexp
-	Messages             []string
+	diffs                []XmlDiff
+	messages             []string
 	namespaces           map[keyValue]void
 }
 
+func (recorder diffRecorder) GetDiffs() []XmlDiff {
+	return recorder.diffs
+}
+
+func (recorder diffRecorder) GetMessages() []string {
+	return recorder.messages
+}
+
 // Creates an instance of DiffRecorder.
-func CreateDiffRecorder(ignoredDiscrepancies []string) *DiffRecorder {
+func createDiffRecorder(ignoredDiscrepancies []string) *diffRecorder {
 	regexes := make([]*regexp.Regexp, len(ignoredDiscrepancies))
 	for i := range ignoredDiscrepancies {
 		regexes[i] = regexp.MustCompile(ignoredDiscrepancies[i])
 	}
 
-	return &DiffRecorder{
+	return &diffRecorder{
 		ignoredDiscrepancies: regexes,
-		Messages:             make([]string, 0),
+		diffs:                make([]XmlDiff, 0),
+		messages:             make([]string, 0),
 		namespaces:           make(map[keyValue]void),
 	}
 }
 
-func (recorder *DiffRecorder) AddMessage(msg string) {
-	for _, d := range recorder.ignoredDiscrepancies {
-		if d.MatchString(msg) {
-			return
-		}
+func (recorder *diffRecorder) addDiff(diff XmlDiff) {
+	msg := diff.DescribeDiff()
+	if len(msg) != 0 && !recorder.isIgnored(msg) {
+		recorder.diffs = append(recorder.diffs, diff)
+		recorder.messages = append(recorder.messages, msg)
 	}
-	recorder.Messages = append(recorder.Messages, msg)
 }
 
-func (recorder *DiffRecorder) AreNamespacesNew(space1 string, space2 string) bool {
+func (recorder *diffRecorder) isIgnored(msg string) bool {
+	for _, d := range recorder.ignoredDiscrepancies {
+		if d.MatchString(msg) {
+			return true
+		}
+	}
+	return false
+}
+
+func (recorder *diffRecorder) areNamespacesNew(space1 string, space2 string) bool {
 	aPair := keyValue{space1, space2}
 	if _, ok := recorder.namespaces[aPair]; ok {
 		return false

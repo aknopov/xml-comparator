@@ -12,14 +12,14 @@ const (
 	defaultMaxDiffs = 2000000
 )
 
-// DiffType is manipulation type
-type DiffType int
+// editType is manipulation type
+type editType int
 
 // Type of modification
 const (
-	DiffDelete DiffType = iota // deleted element
-	DiffSame                   // same element
-	DiffAdd                    // added element
+	diffDelete editType = iota // deleted element
+	diffSame                   // same element
+	diffAdd                    // added element
 )
 
 // `coord` is a coordinate in edit graph
@@ -32,10 +32,10 @@ type graph struct {
 	x, y, r int
 }
 
-// `Diff` is shortest edit script
-type Diff[T any] struct {
+// `diffT` is the shortest edit script
+type diffT[T any] struct {
 	e    T
-	t    DiffType
+	t    editType
 	aIdx int
 	bIdx int
 }
@@ -44,7 +44,7 @@ type Diff[T any] struct {
 type algData[T any] struct {
 	a, b         []T
 	m, n         int
-	diffs        []Diff[T]
+	diffs        []diffT[T]
 	reverse      bool
 	paths        []int
 	graphs       []graph
@@ -53,7 +53,7 @@ type algData[T any] struct {
 	equals       func(x, y T) bool
 }
 
-// CompareSequences compares two sequences of any type and returns a list of differences.
+// compareSequences compares two sequences of any type and returns a list of differences.
 // The comparison is done using the provided `equals` function.
 //
 // Type Parameters:
@@ -69,11 +69,11 @@ type algData[T any] struct {
 // Returns:
 //
 //	A slice of Diff[T] representing the differences between the two sequences.
-func CompareSequences[T any](a, b []T, equals func(x, y T) bool) []Diff[T] {
-	return CompareSequencesEx(a, b, equals, defaultMaxDiffs)
+func compareSequences[T any](a, b []T, equals func(x, y T) bool) []diffT[T] {
+	return compareSequencesEx(a, b, equals, false, defaultMaxDiffs)
 }
 
-// CompareSequencesEx compares two sequences of any type and returns a list of differences.
+// compareSequencesEx compares two sequences of any type and returns a list of differences.
 // The comparison is done using the provided `equals` function.
 // The maxDiffs parameter specifies the maximum number of differences to analyse. The default values is 2000000.
 //
@@ -82,17 +82,18 @@ func CompareSequences[T any](a, b []T, equals func(x, y T) bool) []Diff[T] {
 //	T - The type of the elements in the sequences.
 //
 // Parameters:
-//   - a The first sequence to compare.
-//   - b The second sequence to compare.
+//   - a - The first sequence to compare.
+//   - b - The second sequence to compare.
 //   - equals - A comparison function that checks equality of its arguments.
-//   - maxDiffs: The maximum number of edit graphs to analyse.
+//   - recordEquals - Whether to record equal elements
+//   - maxDiffs - The maximum number of edit graphs to analyse.
 //
 // Returns:
 //
 //	A slice of Diff[T] representing the differences between the two sequences.
-func CompareSequencesEx[T any](a, b []T, equals func(x, y T) bool, maxDiffs int) []Diff[T] {
+func compareSequencesEx[T any](a, b []T, equals func(x, y T) bool, recordEquals bool, maxDiffs int) []diffT[T] {
 	diff := create(a, b, equals)
-	diff.recordEquals = false
+	diff.recordEquals = recordEquals
 	diff.maxDiffs = maxDiffs
 
 	diff.recordDiffs(diff.compose())
@@ -100,16 +101,16 @@ func CompareSequencesEx[T any](a, b []T, equals func(x, y T) bool, maxDiffs int)
 	return diff.Diffs()
 }
 
-// SerializeDiffs returns string presentation of supplied differences
-func SerializeDiffs[T any](diffs []Diff[T]) string {
+// serializeDiffs returns string presentation of supplied differences
+func serializeDiffs[T any](diffs []diffT[T]) string {
 	var buf bytes.Buffer
 	for i := range diffs {
 		switch diffs[i].t {
-		case DiffDelete:
+		case diffDelete:
 			fmt.Fprintf(&buf, "-%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
-		case DiffAdd:
+		case diffAdd:
 			fmt.Fprintf(&buf, "+%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
-		case DiffSame:
+		case diffSame:
 			fmt.Fprintf(&buf, "=%v[%d<->%d]\n", diffs[i].e, diffs[i].aIdx, diffs[i].bIdx)
 		}
 	}
@@ -139,7 +140,7 @@ func create[T any](a, b []T, equals func(x, y T) bool) *algData[T] {
 }
 
 // Diffs return the list of differences between samples
-func (diff *algData[T]) Diffs() []Diff[T] {
+func (diff *algData[T]) Diffs() []diffT[T] {
 	return diff.diffs
 }
 
@@ -213,26 +214,26 @@ func (diff *algData[T]) recordDiffs(comparePoints []coord) {
 			switch {
 			case (comparePoints[i].y - comparePoints[i].x) > (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffDelete, aIdx: y - 1, bIdx: y - 1})
+					diff.diffs = append(diff.diffs, diffT[T]{e: diff.b[py], t: diffDelete, aIdx: y - 1, bIdx: y - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffAdd, aIdx: y - 1, bIdx: y - 1})
+					diff.diffs = append(diff.diffs, diffT[T]{e: diff.b[py], t: diffAdd, aIdx: y - 1, bIdx: y - 1})
 				}
 				y++
 				py++
 			case (comparePoints[i].y - comparePoints[i].x) < (py - px):
 				if diff.reverse {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffAdd, aIdx: x - 1, bIdx: x - 1})
+					diff.diffs = append(diff.diffs, diffT[T]{e: diff.a[px], t: diffAdd, aIdx: x - 1, bIdx: x - 1})
 				} else {
-					diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffDelete, aIdx: x - 1, bIdx: x - 1})
+					diff.diffs = append(diff.diffs, diffT[T]{e: diff.a[px], t: diffDelete, aIdx: x - 1, bIdx: x - 1})
 				}
 				x++
 				px++
 			default:
 				if diff.recordEquals {
 					if diff.reverse {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.b[py], t: DiffSame, aIdx: y - 1, bIdx: x - 1})
+						diff.diffs = append(diff.diffs, diffT[T]{e: diff.b[py], t: diffSame, aIdx: y - 1, bIdx: x - 1})
 					} else {
-						diff.diffs = append(diff.diffs, Diff[T]{e: diff.a[px], t: DiffSame, aIdx: x - 1, bIdx: y - 1})
+						diff.diffs = append(diff.diffs, diffT[T]{e: diff.a[px], t: diffSame, aIdx: x - 1, bIdx: y - 1})
 					}
 				}
 				x++
