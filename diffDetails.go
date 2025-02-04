@@ -23,6 +23,7 @@ const (
 type XmlDiff interface {
 	DescribeDiff() string
 	GetType() DiffType
+	XmlPath() string
 }
 
 type parserError struct {
@@ -65,6 +66,10 @@ func (err parserError) GetType() DiffType {
 	return ParseError
 }
 
+func (err parserError) XmlPath() string {
+	return ""
+}
+
 // ------------
 
 func createTextDiff(diffType DiffType, text1 string, text2 string, xmlPath string) *textualDiff {
@@ -86,6 +91,10 @@ func (diff textualDiff) DescribeDiff() string {
 
 func (diff textualDiff) GetType() DiffType {
 	return diff.diffType
+}
+
+func (diff textualDiff) XmlPath() string {
+	return diff.xmlPath
 }
 
 // ------------
@@ -128,6 +137,10 @@ func (diff attributeDiff) GetType() DiffType {
 	return DiffAttributes
 }
 
+func (diff attributeDiff) XmlPath() string {
+	return diff.xmlPath
+}
+
 // ------------
 
 func createOrderDiff(len int, xmlPath string) *orderDiff {
@@ -140,6 +153,10 @@ func (diff orderDiff) DescribeDiff() string {
 
 func (diff orderDiff) GetType() DiffType {
 	return DiffChildrenOrder
+}
+
+func (diff orderDiff) XmlPath() string {
+	return diff.xmlPath
 }
 
 // ------------
@@ -169,6 +186,10 @@ func (diff childrenDiff) DescribeDiff() string {
 
 func (diff childrenDiff) GetType() DiffType {
 	return DiffChildren
+}
+
+func (diff childrenDiff) XmlPath() string {
+	return diff.xmlPath
 }
 
 // ------------

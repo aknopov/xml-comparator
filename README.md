@@ -46,4 +46,11 @@ Example of usage in the code -
     xmlString6 := `<a>Another Content</a>`
     diffs = CompareXmlStringsEx(xmlString5, xmlString6, false, []string{`Node textsNodes test differ: '.+' vs '.+'`})
     assert.Equal(0, len(diffs))
+
+    // To get more insite
+    recorder := ComputeDifferences(xmlString1, xmlMixed, false, []string{})
+    assert.Equal(3, len(recorder.Diffs))
+    assert.Equal(DiffContent, recorder.Diffs[0].GetType())
+    assert.Equal("Node texts differ: 'Jani' vs 'Tove', path='/note/from[1]'", recorder.Diffs[0].DescribeDiff())
+    assert.Equal("/note/from[1]", recorder.Diffs[0].XmlPath())
 ```

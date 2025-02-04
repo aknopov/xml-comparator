@@ -18,6 +18,10 @@ func (diff testDiff) GetType() DiffType {
 	return DiffContent
 }
 
+func (diff testDiff) XmlPath() string {
+	return "/a/b"
+}
+
 func TestKnownMessagesFiltering(t *testing.T) {
 	assertT := assert.New(t)
 
@@ -49,6 +53,7 @@ func TestAccessToDetails(t *testing.T) {
 	assertT.Equal(2, len(recorder.Diffs))
 	diff := recorder.Diffs[0]
 	assertT.Equal("header", diff.DescribeDiff())
+	assertT.Equal("/a/b", diff.XmlPath())
 	diff = recorder.Diffs[1]
-	assertT.Equal("body", diff.DescribeDiff())
+	assertT.Equal("/a/b", diff.XmlPath())
 }
