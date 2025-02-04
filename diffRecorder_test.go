@@ -38,3 +38,17 @@ func TestAreNamespacesNew(t *testing.T) {
 	assertT.True(recorder.AreNamespacesNew("space1", "space2"))
 	assertT.False(recorder.AreNamespacesNew("space1", "space2"))
 }
+
+func TestAccessToDetails(t *testing.T) {
+	assertT := assert.New(t)
+
+	recorder := CreateDiffRecorder([]string{})
+	recorder.AddDiff(testDiff{"header"})
+	recorder.AddDiff(testDiff{"body"})
+
+	assertT.Equal(2, len(recorder.Diffs))
+	diff := recorder.Diffs[0]
+	assertT.Equal("header", diff.DescribeDiff())
+	diff = recorder.Diffs[1]
+	assertT.Equal("body", diff.DescribeDiff())
+}

@@ -1,34 +1,35 @@
 package xmlcomparator
 
 import (
+	"encoding/xml"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParsing(t *testing.T) {
-	assert := assert.New(t)
+	assertT := assert.New(t)
 
 	root, err := parseXML(xmlString1)
-	assert.Nil(err)
+	assertT.Nil(err)
 
-	assert.Nil(root.Parent)
+	assertT.Nil(root.Parent)
 	for _, child := range root.Children {
-		assert.NotNil(child.Parent)
+		assertT.NotNil(child.Parent)
 	}
 
-	assert.Equal("note[color=red]", root.String())
-	assert.Equal(5, len(root.Children))
-	assert.Equal("to[] = Tove", root.Children[0].String())
-	assert.Equal("body[] = Don't forget me this weekend!", root.Children[4].String())
+	assertT.Equal("note[color=red]", root.String())
+	assertT.Equal(5, len(root.Children))
+	assertT.Equal("to[] = Tove", root.Children[0].String())
+	assertT.Equal("body[] = Don't forget me this weekend!", root.Children[4].String())
 }
 
 func TestParsingFailure(t *testing.T) {
-	assert := assert.New(t)
+	assertT := assert.New(t)
 
 	root, err := parseXML("bogus")
-	assert.Nil(root)
-	assert.NotNil(err)
+	assertT.Nil(root)
+	assertT.NotNil(err)
 }
 
 func TestWalking(t *testing.T) {
@@ -44,15 +45,26 @@ func TestWalking(t *testing.T) {
 }
 
 func TestHashCodeGeneration(t *testing.T) {
-	assert := assert.New(t)
+	assertT := assert.New(t)
 
 	root1, _ := parseXML(`<a><b/><c/></a>`)
 	root2, _ := parseXML(`<a><c/><b/></a>`)
-	assert.NotEqual(root1.Hash, root2.Hash)
+	assertT.NotEqual(root1.Hash, root2.Hash)
 
 	root3, _ := parseXML(`<a><b>Text</b><c/></a>`)
-	assert.NotEqual(root1.Hash, root3.Hash)
+	assertT.NotEqual(root1.Hash, root3.Hash)
 
 	root4, _ := parseXML(`<a><b foo="bar"/><c/></a>`)
-	assert.NotEqual(root1.Hash, root4.Hash)
+	assertT.NotEqual(root1.Hash, root4.Hash)
+}
+
+func TestHashCodeCaching(t *testing.T) {
+	assertT := assert.New(t)
+
+	node := parseNode{XMLName: xml.Name{Space: "spc", Local: "name"}}
+	assertT.Equal(uint32(0), node.Hash)
+	hash := node.hashCode()
+	assertT.Equal(hash, node.Hash)
+
+	assertT.Equal(hash, node.hashCode())
 }

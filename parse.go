@@ -52,7 +52,7 @@ func parseXML(xmlString string) (*parseNode, error) {
 	return &root, nil
 }
 
-// Walks breadth-first through the XML tree calling the function for iteslef and then for each child node
+// Walks depth-first through the XML tree calling the function for iteslef and then for each child node
 //   - f - function to call for each node; should return `false` to stop traversiong
 func (node *parseNode) walk(f func(*parseNode) bool) {
 	if !f(node) {

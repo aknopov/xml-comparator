@@ -70,7 +70,7 @@ type algData[T any] struct {
 //
 //	A slice of Diff[T] representing the differences between the two sequences.
 func CompareSequences[T any](a, b []T, equals func(x, y T) bool) []Diff[T] {
-	return CompareSequencesEx(a, b, equals, defaultMaxDiffs)
+	return CompareSequencesEx(a, b, equals, false, defaultMaxDiffs)
 }
 
 // CompareSequencesEx compares two sequences of any type and returns a list of differences.
@@ -82,17 +82,18 @@ func CompareSequences[T any](a, b []T, equals func(x, y T) bool) []Diff[T] {
 //	T - The type of the elements in the sequences.
 //
 // Parameters:
-//   - a The first sequence to compare.
-//   - b The second sequence to compare.
+//   - a - The first sequence to compare.
+//   - b - The second sequence to compare.
 //   - equals - A comparison function that checks equality of its arguments.
-//   - maxDiffs: The maximum number of edit graphs to analyse.
+//   - recordEquals - Whether to record equal elements
+//   - maxDiffs - The maximum number of edit graphs to analyse.
 //
 // Returns:
 //
 //	A slice of Diff[T] representing the differences between the two sequences.
-func CompareSequencesEx[T any](a, b []T, equals func(x, y T) bool, maxDiffs int) []Diff[T] {
+func CompareSequencesEx[T any](a, b []T, equals func(x, y T) bool, recordEquals bool, maxDiffs int) []Diff[T] {
 	diff := create(a, b, equals)
-	diff.recordEquals = false
+	diff.recordEquals = recordEquals
 	diff.maxDiffs = maxDiffs
 
 	diff.recordDiffs(diff.compose())

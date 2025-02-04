@@ -14,9 +14,9 @@ func equalsFun[T comparable](x, y T) bool {
 func TestSerialization(t *testing.T) {
 	assert := assert.New(t)
 
-	diffs := CompareSequences([]rune("abc"), []rune("abd"), equalsFun)
+	diffs := CompareSequencesEx([]rune("abc"), []rune("abd"), equalsFun, true, 13)
 	sDiff := SerializeDiffs(diffs)
-	assert.Equal("-99[2<->2]\n+100[2<->2]\n", sDiff)
+	assert.Equal("=97[0<->0]\n=98[1<->1]\n-99[2<->2]\n+100[2<->2]\n", sDiff)
 }
 
 func TestStringDiff(t *testing.T) {
@@ -197,7 +197,7 @@ func TestMaxDiff(t *testing.T) {
 	diff1 := CompareSequences(a, b, equalsFun)
 	assert.Equal(6, len(diff1), "want: 6 diffs, actual: %d", len(diff1))
 
-	diff2 := CompareSequencesEx(a, b, equalsFun, 1)
+	diff2 := CompareSequencesEx(a, b, equalsFun, false, 1)
 	assert.Equal(2, len(diff2), "want: 2 diffs, actual: %d", len(diff2))
 }
 
@@ -205,7 +205,7 @@ func TestDiffPluralSubsequence(t *testing.T) {
 	a := []rune("abcaaaaaabd")
 	b := []rune("abdaaaaaabc")
 	// dividing sequences forcibly
-	diffActual := CompareSequencesEx(a, b, equalsFun, 1)
+	diffActual := CompareSequencesEx(a, b, equalsFun, false, 1)
 	if len(diffActual) != 2 {
 		t.Fatalf("diffs length is %d, want 2", len(diffActual))
 	}
